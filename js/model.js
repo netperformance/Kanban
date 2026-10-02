@@ -68,16 +68,25 @@
   }
 
   function defaultBoard() {
-    return { columns: DEFAULT_COLUMNS.map((column, index) => ({ ...column, color: colorForIndex(index) })), tasks: [], filter: { types: [], search: '' } };
+    return { columns: DEFAULT_COLUMNS.map((column, index) => ({ ...column, color: colorForIndex(index) })), tasks: [], filter: { types: [], priorities: [], search: '' } };
   }
 
-  // Filter of a project: entry types and search text.
-  // An empty type list means "all types". A list with every type is the same
-  // as "all" and is stored as an empty list.
+  // Order of the priorities in the filter bar: most urgent first.
+  const PRIORITY_FILTER_ORDER = Object.freeze(['critical', 'high', 'normal', 'low']);
+
+  // Filter of a project: entry types, priorities and search text.
+  // An empty list means "all". A list with every value is the same as "all"
+  // and is stored as an empty list.
   function normalizeFilter(raw) {
-    const types = raw && Array.isArray(raw.types) ? TYPE_KEYS.filter((type) => raw.types.includes(type)) : [];
-    const search = raw && typeof raw.search === 'string' ? raw.search.slice(0, LIMITS.search) : '';
-    return { types: types.length === TYPE_KEYS.length ? [] : types, search };
+    const pick = (keys, values) => {
+      const picked = Array.isArray(values) ? keys.filter((key) => values.includes(key)) : [];
+      return picked.length === keys.length ? [] : picked;
+    };
+    return {
+      types: pick(TYPE_KEYS, raw && raw.types),
+      priorities: pick(PRIORITY_FILTER_ORDER, raw && raw.priorities),
+      search: raw && typeof raw.search === 'string' ? raw.search.slice(0, LIMITS.search) : ''
+    };
   }
 
   function defaultState() {
@@ -260,7 +269,7 @@
   }
 
   ns.model = Object.freeze({
-    SCHEMA_VERSION, GENERAL_PROJECT_ID, LIMITS, PRIORITY_KEYS, TYPE_KEYS, DEFAULT_TYPE, THEMES, DEFAULT_THEME, COLUMN_COLORS, DEFAULT_COLUMNS,
+    SCHEMA_VERSION, GENERAL_PROJECT_ID, LIMITS, PRIORITY_KEYS, PRIORITY_FILTER_ORDER, TYPE_KEYS, DEFAULT_TYPE, THEMES, DEFAULT_THEME, COLUMN_COLORS, DEFAULT_COLUMNS,
     isPriority, isType, isDate, daysUntil, colorForIndex, isColor, normalizeColor, nextColumnColor, createId, defaultBoard, defaultState, normalizeFilter, normalizeState, problemCount
   });
 })(window.Arbeitsboard = window.Arbeitsboard || {});

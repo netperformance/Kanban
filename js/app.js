@@ -15,6 +15,7 @@
   const projectTabs = $('#project-tabs');
   const projectActions = $('#project-actions');
   const filterChips = $('#filter-chips');
+  const priorityChips = $('#priority-chips');
   const filterStatus = $('#filter-status');
   const searchInput = $('#search-input');
   const noticeArea = $('#notice-area');
@@ -264,30 +265,45 @@
     return terms.every((term) => text.includes(term));
   }
 
+  function priorityOf(task) {
+    return model.isPriority(task.priority) ? task.priority : 'normal';
+  }
+
+  // Within a group (types, priorities) any selected value matches ("or"),
+  // between the groups and the search all must match ("and").
   function isShown(task, filter, terms) {
-    return (filter.types.length === 0 || filter.types.includes(typeOf(task))) && matchesSearch(task, terms);
+    return (filter.types.length === 0 || filter.types.includes(typeOf(task))) &&
+      (filter.priorities.length === 0 || filter.priorities.includes(priorityOf(task))) &&
+      matchesSearch(task, terms);
   }
 
   function isFiltered(filter) {
-    return filter.types.length > 0 || searchTerms(filter).length > 0;
+    return filter.types.length > 0 || filter.priorities.length > 0 || searchTerms(filter).length > 0;
   }
 
-  function setFilterTypes(projectId, types) {
+  function setFilter(projectId, changes) {
     setView((draft) => {
       const project = findProject(draft, projectId);
-      if (project) project.filter = model.normalizeFilter({ ...project.filter, types });
+      if (project) project.filter = model.normalizeFilter({ ...project.filter, ...changes });
     });
     render();
   }
 
+  function toggle(list, value) {
+    return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
+  }
+
   // A new or changed entry must not disappear behind the filter right after
-  // saving: its type is added to the filter, and a search it does not match is cleared.
+  // saving: its type and priority are added to the filter, and a search it
+  // does not match is cleared.
   function keepVisible(project, task) {
     const filter = projectFilter(project);
-    const type = typeOf(task);
-    const types = filter.types.length > 0 && !filter.types.includes(type) ? [...filter.types, type] : filter.types;
-    const search = matchesSearch(task, searchTerms(filter)) ? filter.search : '';
-    project.filter = model.normalizeFilter({ types, search });
+    const extend = (list, value) => (list.length > 0 && !list.includes(value) ? [...list, value] : list);
+    project.filter = model.normalizeFilter({
+      types: extend(filter.types, typeOf(task)),
+      priorities: extend(filter.priorities, priorityOf(task)),
+      search: matchesSearch(task, searchTerms(filter)) ? filter.search : ''
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -351,6 +367,7 @@
 
   // Line icons for the entry types and the due date, drawn on a 24 by 24 grid.
   const ICONS = Object.freeze({
+    check: ['M5 12.5l4.5 4.5L19 7.5'],
     calendar: ['M6 4.5h12a2.5 2.5 0 0 1 2.5 2.5v11a2.5 2.5 0 0 1-2.5 2.5H6A2.5 2.5 0 0 1 3.5 18V7A2.5 2.5 0 0 1 6 4.5z', 'M3.5 9.5h17M8 2.5v4M16 2.5v4'],
     task: ['M7.5 3.5h9a4 4 0 0 1 4 4v9a4 4 0 0 1-4 4h-9a4 4 0 0 1-4-4v-9a4 4 0 0 1 4-4z', 'M8 12.5l3 3 5-6'],
     story: ['M6.5 3.5h11v17l-5.5-3.8-5.5 3.8z'],
@@ -398,15 +415,36 @@
     return chip;
   }
 
+  // Priority chips carry the colours of the priority labels on the entries.
+  // A selected chip gets a frame and a check mark.
+  function createPriorityChip(priority, count, pressed) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = `filter-chip priority-chip priority-chip-${priority}`;
+    chip.dataset.priorityFilter = priority;
+    chip.setAttribute('aria-pressed', String(pressed));
+    if (pressed) chip.append(createIcon('check'));
+    const amount = document.createElement('span');
+    amount.className = 'filter-count';
+    amount.textContent = String(count);
+    chip.append(document.createTextNode(t(`priority.${priority}`)), amount);
+    return chip;
+  }
+
   function renderFilterBar(project) {
     const filter = projectFilter(project);
     const terms = searchTerms(filter);
-    const chips = [createFilterChip('all', t('filterAll'), project.tasks.length, filter.types.length === 0)];
+    const nothingSelected = filter.types.length === 0 && filter.priorities.length === 0;
+    const chips = [createFilterChip('all', t('filterAll'), project.tasks.length, nothingSelected)];
     model.TYPE_KEYS.forEach((type) => {
       const count = project.tasks.filter((task) => typeOf(task) === type).length;
       chips.push(createFilterChip(type, t(`type.${type}`), count, filter.types.includes(type)));
     });
     filterChips.replaceChildren(...chips);
+    priorityChips.replaceChildren(...model.PRIORITY_FILTER_ORDER.map((priority) => {
+      const count = project.tasks.filter((task) => priorityOf(task) === priority).length;
+      return createPriorityChip(priority, count, filter.priorities.includes(priority));
+    }));
     // The number of shown entries is always visible, also when "All" is selected.
     const shown = project.tasks.filter((task) => isShown(task, filter, terms)).length;
     filterStatus.textContent = tCount('filterStatus', project.tasks.length, { shown, total: project.tasks.length });
@@ -1121,13 +1159,23 @@
     if (!chip) return;
     const project = getProject();
     const value = chip.dataset.filter;
-    let types = [];
-    if (value !== 'all') {
-      const current = projectFilter(project).types;
-      types = current.includes(value) ? current.filter((type) => type !== value) : [...current, value];
+    // "All" resets types and priorities; the search stays.
+    if (value === 'all') {
+      setFilter(project.id, { types: [], priorities: [] });
+    } else {
+      setFilter(project.id, { types: toggle(projectFilter(project).types, value) });
     }
-    setFilterTypes(project.id, types);
     const again = [...filterChips.querySelectorAll('[data-filter]')].find((item) => item.dataset.filter === value);
+    if (again) again.focus();
+  });
+
+  priorityChips.addEventListener('click', (event) => {
+    const chip = event.target.closest('[data-priority-filter]');
+    if (!chip) return;
+    const project = getProject();
+    const value = chip.dataset.priorityFilter;
+    setFilter(project.id, { priorities: toggle(projectFilter(project).priorities, value) });
+    const again = [...priorityChips.querySelectorAll('[data-priority-filter]')].find((item) => item.dataset.priorityFilter === value);
     if (again) again.focus();
   });
 

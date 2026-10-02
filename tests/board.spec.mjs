@@ -523,7 +523,14 @@ test('Hineingezogenes HTML landet im Editor nur als Text', async ({ page }) => {
 
 test('Tickets lassen sich per Drag and Drop verschieben', async ({ page }) => {
   await openBoard(page, boardState([{ id: 'a', title: 'Ziehen', description: '', columnId: 'backlog' }]));
-  await page.dragAndDrop('.ticket[data-task-id=a]', '[data-task-list=done]');
+  // Real mouse movements in several steps, as a person drags.
+  const source = await page.locator('.ticket[data-task-id=a] h3').boundingBox();
+  const target = await page.locator('[data-task-list=done]').boundingBox();
+  await page.mouse.move(source.x + 20, source.y + 5);
+  await page.mouse.down();
+  await page.mouse.move(source.x + 60, source.y + 10, { steps: 5 });
+  await page.mouse.move(target.x + target.width / 2, target.y + 40, { steps: 10 });
+  await page.mouse.up();
   expect((await stored(page)).projects[0].tasks[0].columnId).toBe('done');
 });
 
@@ -705,4 +712,46 @@ test('Farbschema: Hell, Dunkel und Wie System, gespeichert über das Neuladen', 
   await page.click('[data-theme-option=light]');
   await page.click('#close-settings');
   expect(await background(page)).toBe(light);
+});
+
+// --- Prioritätsfilter --------------------------------------------------------
+
+function priorityBoard() {
+  const T = (id, type, priority) => ({ id, type, priority, title: `${type} ${priority} ${id}`, description: '', columnId: 'backlog' });
+  return { ...boardState([T('1', 'bug', 'critical'), T('2', 'task', 'critical'), T('3', 'bug', 'high'), T('4', 'task', 'normal'), T('5', 'idea', 'low')]), language: 'en' };
+}
+
+const priorityChip = (page, value) => page.locator(`.priority-chip[data-priority-filter=${value}]`);
+
+test('Prioritätsfilter: nur kritische, kombiniert mit Typ, "Alle" setzt beides zurück', async ({ page }) => {
+  await openBoard(page, priorityBoard());
+  await expect(page.locator('.priority-chip')).toHaveText(['Critical2', 'High1', 'Normal1', 'Low1']);
+  await priorityChip(page, 'critical').click();
+  await expect(priorityChip(page, 'critical')).toHaveAttribute('aria-pressed', 'true');
+  await expect(priorityChip(page, 'critical').locator('svg')).toHaveCount(1);
+  await expect(chip(page, 'all')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.ticket')).toHaveCount(2);
+  await expect(page.locator('#filter-status')).toHaveText('2 of 5 entries shown');
+
+  await priorityChip(page, 'high').click();
+  await expect(page.locator('.ticket')).toHaveCount(3);
+  await chip(page, 'bug').click();
+  await expect(page.locator('.ticket h3')).toHaveText(['bug critical 1', 'bug high 3']);
+
+  await chip(page, 'all').click();
+  await expect(page.locator('.ticket')).toHaveCount(5);
+  await expect(page.locator('.priority-chip[aria-pressed=true]')).toHaveCount(0);
+  await expect(chip(page, 'all')).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('Prioritätsfilter: bleibt nach dem Neuladen, neuer Eintrag anderer Priorität bleibt sichtbar', async ({ page }) => {
+  await openBoard(page, priorityBoard());
+  await priorityChip(page, 'critical').click();
+  await page.reload();
+  await expect(priorityChip(page, 'critical')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.ticket')).toHaveCount(2);
+  expect((await stored(page)).projects[0].filter.priorities).toEqual(['critical']);
+  await createStory(page, 'Normale Priorität');
+  await expect(page.locator('.ticket h3', { hasText: 'Normale Priorität' })).toBeVisible();
+  await expect(priorityChip(page, 'normal')).toHaveAttribute('aria-pressed', 'true');
 });

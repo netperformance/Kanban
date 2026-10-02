@@ -202,6 +202,15 @@ h1 { margin-bottom: 0; font-family: Georgia, "Times New Roman", serif; font-size
 .filter-chip:hover { background: var(--control-hover); }
 .filter-chip[aria-pressed="true"] { color: var(--on-ink); border-color: var(--ink); background: var(--ink); }
 .filter-count { font-weight: 400; opacity: 0.75; }
+.filter-chip svg { width: 15px; height: 15px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.priority-chips { padding-left: 14px; border-left: 1px solid var(--line); }
+.priority-chip-critical { --chip-fg: var(--critical-fg); --chip-bg: var(--critical-bg); }
+.priority-chip-high { --chip-fg: var(--high-fg); --chip-bg: var(--high-bg); }
+.priority-chip-normal { --chip-fg: var(--normal-fg); --chip-bg: var(--normal-bg); }
+.priority-chip-low { --chip-fg: var(--low-fg); --chip-bg: var(--low-bg); }
+.priority-chip, .priority-chip:hover, .priority-chip[aria-pressed="true"] { color: var(--chip-fg); border-color: transparent; background: var(--chip-bg); }
+.priority-chip:hover { box-shadow: inset 0 0 0 1px var(--chip-fg); }
+.priority-chip[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--chip-fg); }
 .filter-status { margin: 0 0 0 auto; color: var(--text-2); font-size: 0.84rem; }
 
 /* Board and columns --------------------------------------------------------- */
@@ -326,6 +335,7 @@ dialog::backdrop { background: var(--backdrop); }
   .project-actions { width: 100%; }
   .project-actions > button { flex: 1; }
   .search-field { flex-basis: 100%; }
+  .priority-chips { padding-left: 0; border-left: 0; }
   .filter-status { flex-basis: 100%; margin-left: 0; }
   .board { grid-template-columns: 1fr; gap: 15px; padding-top: 20px; }
   .column { min-height: 260px; }

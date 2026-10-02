@@ -38,7 +38,7 @@
       typeLabel: 'Typ', columnSelectLabel: 'Spalte', dueLabel: 'Fällig am', newEntryIn: 'Neuer Eintrag in {title}',
       dueOn: 'Fällig am {date}', dueToday: 'Heute fällig', dueTomorrow: 'Morgen fällig', dueOverdue: 'Überfällig seit {date}', dueShortToday: 'Heute', dueShortTomorrow: 'Morgen',
       searchLabel: 'Einträge durchsuchen', searchPlaceholder: 'Suchen …',
-      appearanceSection: 'Darstellung', themeSystem: 'Wie System', themeLight: 'Hell', themeDark: 'Dunkel', filterLabel: 'Nach Typ filtern', filterAll: 'Alle', filterStatus: '{shown} von {total} Einträgen angezeigt', filterStatusOne: '{shown} von 1 Eintrag angezeigt', filterStatusZero: 'Noch keine Einträge',
+      appearanceSection: 'Darstellung', themeSystem: 'Wie System', themeLight: 'Hell', themeDark: 'Dunkel', filterLabel: 'Nach Typ filtern', filterPriorityLabel: 'Nach Priorität filtern', filterAll: 'Alle', filterStatus: '{shown} von {total} Einträgen angezeigt', filterStatusOne: '{shown} von 1 Eintrag angezeigt', filterStatusZero: 'Noch keine Einträge',
       emptyFiltered: 'Keine passenden Einträge. {count} sind durch den Filter ausgeblendet.', emptyFilteredOne: 'Keine passenden Einträge. Ein Eintrag ist durch den Filter ausgeblendet.',
       type: { task: 'Aufgabe', story: 'Story', bug: 'Fehler', idea: 'Idee' },
       priority: { low: 'Niedrig', normal: 'Normal', high: 'Hoch', critical: 'Kritisch' }
@@ -78,7 +78,7 @@
       typeLabel: 'Type', columnSelectLabel: 'Column', dueLabel: 'Due date', newEntryIn: 'New entry in {title}',
       dueOn: 'Due {date}', dueToday: 'Due today', dueTomorrow: 'Due tomorrow', dueOverdue: 'Overdue since {date}', dueShortToday: 'Today', dueShortTomorrow: 'Tomorrow',
       searchLabel: 'Search entries', searchPlaceholder: 'Search…',
-      appearanceSection: 'Appearance', themeSystem: 'System', themeLight: 'Light', themeDark: 'Dark', filterLabel: 'Filter by type', filterAll: 'All', filterStatus: '{shown} of {total} entries shown', filterStatusOne: '{shown} of 1 entry shown', filterStatusZero: 'No entries yet',
+      appearanceSection: 'Appearance', themeSystem: 'System', themeLight: 'Light', themeDark: 'Dark', filterLabel: 'Filter by type', filterPriorityLabel: 'Filter by priority', filterAll: 'All', filterStatus: '{shown} of {total} entries shown', filterStatusOne: '{shown} of 1 entry shown', filterStatusZero: 'No entries yet',
       emptyFiltered: 'No matching entries. {count} are hidden by the filter.', emptyFilteredOne: 'No matching entries. One entry is hidden by the filter.',
       type: { task: 'Task', story: 'Story', bug: 'Bug', idea: 'Idea' },
       priority: { low: 'Low', normal: 'Normal', high: 'High', critical: 'Critical' }
