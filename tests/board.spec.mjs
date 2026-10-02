@@ -755,3 +755,35 @@ test('Prioritätsfilter: bleibt nach dem Neuladen, neuer Eintrag anderer Priorit
   await expect(page.locator('.ticket h3', { hasText: 'Normale Priorität' })).toBeVisible();
   await expect(priorityChip(page, 'normal')).toHaveAttribute('aria-pressed', 'true');
 });
+
+// --- Name des Boards und Version ---------------------------------------------
+
+test('Boardname: gilt für beide Sprachen, bleibt nach dem Neuladen, leer ergibt den Standardnamen', async ({ page }) => {
+  await openBoard(page);
+  await expect(page.locator('h1')).toHaveText('Work board');
+  await expect(page.locator('h1')).not.toContainText('v0.');
+  await openSettings(page);
+  await expect(page.locator('#settings-version')).toHaveText(/^Version \d+\.\d+\.\d+$/);
+  await expect(page.locator('#board-name-input')).toHaveAttribute('placeholder', 'Work board');
+  await page.fill('#board-name-input', 'Team Alpha');
+  await expect(page.locator('h1')).toHaveText('Team Alpha');
+  await expect(page).toHaveTitle('Team Alpha');
+  await page.click('[data-language=de]');
+  await expect(page.locator('h1')).toHaveText('Team Alpha');
+  await expect(page.locator('#settings-version')).toHaveText(/^Version /);
+  await page.click('#close-settings');
+  await expect.poll(async () => (await stored(page)).boardName).toBe('Team Alpha');
+  await page.reload();
+  await expect(page.locator('h1')).toHaveText('Team Alpha');
+  await expect(page).toHaveTitle('Team Alpha');
+
+  await openSettings(page);
+  await expect(page.locator('#board-name-input')).toHaveValue('Team Alpha');
+  await page.fill('#board-name-input', '');
+  await expect(page.locator('h1')).toHaveText('Arbeitsboard');
+  await page.click('[data-language=en]');
+  await expect(page.locator('h1')).toHaveText('Work board');
+  await expect(page).toHaveTitle('Work board');
+  await page.click('#close-settings');
+  await expect.poll(async () => (await stored(page)).boardName).toBe('');
+});

@@ -124,6 +124,14 @@
     equal(model.normalizeState({ ...board([]), language: 'fr' }).state.language, 'en');
   });
 
+  test('Modell: eigener Boardname wird gekürzt und bereinigt, fehlt er, bleibt er leer', () => {
+    equal(model.defaultState().boardName, '');
+    equal(model.normalizeState(board([])).state.boardName, '');
+    equal(model.normalizeState({ ...board([]), boardName: '  Mein Board  ' }).state.boardName, 'Mein Board');
+    equal(model.normalizeState({ ...board([]), boardName: 'x'.repeat(100) }).state.boardName.length, model.LIMITS.boardName);
+    equal(model.normalizeState({ ...board([]), boardName: 42 }).state.boardName, '');
+  });
+
   test('Modell: Eingaben, die gar kein Board sind, werden abgelehnt', () => {
     [null, undefined, 'x', 42, [], {}].forEach((input) => equal(model.normalizeState(input), null, String(input)));
   });

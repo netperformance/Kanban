@@ -6,7 +6,7 @@
 
   const SCHEMA_VERSION = 8;
   const GENERAL_PROJECT_ID = 'general';
-  const LIMITS = Object.freeze({ taskTitle: 120, columnTitle: 48, projectTitle: 48, description: 10000, id: 200, search: 100 });
+  const LIMITS = Object.freeze({ boardName: 60, taskTitle: 120, columnTitle: 48, projectTitle: 48, description: 10000, id: 200, search: 100 });
   // Colour scheme: light (default), dark, or following the operating system.
   const THEMES = Object.freeze(['light', 'dark', 'system']);
   const DEFAULT_THEME = 'light';
@@ -71,6 +71,10 @@
     return { columns: DEFAULT_COLUMNS.map((column, index) => ({ ...column, color: colorForIndex(index) })), tasks: [], filter: { types: [], priorities: [], search: '' } };
   }
 
+  function normalizeBoardName(value) {
+    return typeof value === 'string' ? value.trim().slice(0, LIMITS.boardName) : '';
+  }
+
   // Order of the priorities in the filter bar: most urgent first.
   const PRIORITY_FILTER_ORDER = Object.freeze(['critical', 'high', 'normal', 'low']);
 
@@ -95,6 +99,7 @@
       revision: 0,
       language: 'en',
       theme: DEFAULT_THEME,
+      boardName: '',
       activeProjectId: GENERAL_PROJECT_ID,
       projects: [{ id: GENERAL_PROJECT_ID, title: 'General', ...defaultBoard() }]
     };
@@ -257,6 +262,8 @@
         // English is the default language.
         language: candidate.language === 'de' ? 'de' : 'en',
         theme,
+        // Own name of the board; empty means the default name of the language.
+        boardName: normalizeBoardName(candidate.boardName),
         activeProjectId: projectIds.has(candidate.activeProjectId) ? candidate.activeProjectId : GENERAL_PROJECT_ID,
         projects
       },
@@ -270,6 +277,6 @@
 
   ns.model = Object.freeze({
     SCHEMA_VERSION, GENERAL_PROJECT_ID, LIMITS, PRIORITY_KEYS, PRIORITY_FILTER_ORDER, TYPE_KEYS, DEFAULT_TYPE, THEMES, DEFAULT_THEME, COLUMN_COLORS, DEFAULT_COLUMNS,
-    isPriority, isType, isDate, daysUntil, colorForIndex, isColor, normalizeColor, nextColumnColor, createId, defaultBoard, defaultState, normalizeFilter, normalizeState, problemCount
+    isPriority, isType, isDate, daysUntil, colorForIndex, isColor, normalizeColor, nextColumnColor, createId, defaultBoard, defaultState, normalizeBoardName, normalizeFilter, normalizeState, problemCount
   });
 })(window.Arbeitsboard = window.Arbeitsboard || {});

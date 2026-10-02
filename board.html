@@ -6,14 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' file:; style-src 'self' file:; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <title data-i18n="documentTitle">Work board</title>
+  <title>Work board</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2320251f'/%3E%3Crect x='12' y='14' width='11' height='36' rx='3' fill='%23d95d45'/%3E%3Crect x='27' y='21' width='11' height='29' rx='3' fill='%23c58b12'/%3E%3Crect x='42' y='10' width='10' height='40' rx='3' fill='%2334835b'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <main class="app-shell">
     <header class="topbar">
-      <h1><span data-i18n="appName">Work board</span> <span class="version">v0.0.9</span></h1>
+      <h1 id="board-name">Work board</h1>
       <div class="topbar-controls">
         <button class="secondary-button settings-button" id="open-settings" type="button" aria-haspopup="dialog">
           <svg class="settings-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19.3 9.8 L21.9 10.3 L21.9 13.7 L19.3 14.2 L18.7 15.5 L20.2 17.8 L17.8 20.2 L15.5 18.7 L14.2 19.3 L13.7 21.9 L10.3 21.9 L9.8 19.3 L8.5 18.7 L6.2 20.2 L3.8 17.8 L5.3 15.5 L4.7 14.2 L2.1 13.7 L2.1 10.3 L4.7 9.8 L5.3 8.5 L3.8 6.2 L6.2 3.8 L8.5 5.3 L9.8 4.7 L10.3 2.1 L13.7 2.1 L14.2 4.7 L15.5 5.3 L17.8 3.8 L20.2 6.2 L18.7 8.5 Z"/><circle cx="12" cy="12" r="3.2"/></svg>
@@ -55,6 +55,12 @@
     <div class="dialog-form">
       <h2 class="dialog-heading" id="settings-dialog-title" data-i18n="settings">Settings</h2>
 
+      <section class="settings-section" aria-labelledby="settings-name-title">
+        <h3 class="settings-title" id="settings-name-title"><label for="board-name-input" data-i18n="boardNameSection">Board name</label></h3>
+        <input class="settings-input" id="board-name-input" type="text" maxlength="60" autocomplete="off" aria-describedby="board-name-hint">
+        <p class="settings-hint" id="board-name-hint" data-i18n="boardNameHint">Shown at the top of the page and as the browser tab title, in every language. Leave it empty to use the default name.</p>
+      </section>
+
       <section class="settings-section" aria-labelledby="settings-language-title">
         <h3 class="settings-title" id="settings-language-title" data-i18n="languageSection">Language</h3>
         <div class="segmented" role="group" aria-labelledby="settings-language-title">
@@ -88,6 +94,7 @@
       </section>
 
       <footer class="dialog-actions">
+        <p class="settings-version" id="settings-version"></p>
         <button class="primary-button" id="close-settings" type="button" data-i18n="close">Close</button>
       </footer>
     </div>

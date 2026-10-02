@@ -5,7 +5,7 @@
   const TRANSLATIONS = {
     de: {
       documentTitle: 'Arbeitsboard', appName: 'Arbeitsboard', newProject: 'Neues Projekt', createProject: 'Projekt erstellen', editProject: 'Projekt bearbeiten', deleteProject: 'Projekt löschen', projectsLabel: 'Projekte', generalProject: 'Allgemein', newColumn: 'Neue Spalte', newEntry: '+ Neuer Eintrag', boardLabel: 'Kanban-Board',
-      settings: 'Einstellungen', close: 'Schließen', languageSection: 'Sprache', dataSection: 'Datensicherung',
+      settings: 'Einstellungen', close: 'Schließen', boardNameSection: 'Name des Boards', boardNameHint: 'Erscheint oben auf der Seite und als Titel des Browser-Tabs, in jeder Sprache. Leer lassen für den Standardnamen.', versionLabel: 'Version {version}', languageSection: 'Sprache', dataSection: 'Datensicherung',
       dataHint: 'Dein Board ist nur in diesem Browser gespeichert. Exportiere es regelmäßig als Sicherung oder um es in einen anderen Browser zu übernehmen.',
       exportBoard: 'Exportieren', importBoard: 'Importieren', exportHint: 'Lädt das gesamte Board als JSON-Datei herunter.', importHint: 'Ersetzt das aktuelle Board durch den Inhalt einer JSON-Datei. Der aktuelle Stand wird vorher im Browser gesichert.', exportDone: 'Export gestartet: „{file}“.',
       titleLabel: 'Titel', descriptionLabel: 'Beschreibung', priorityLabel: 'Priorität', projectLabel: 'Projekt', projectNameLabel: 'Projektname', nameLabel: 'Name', colorLabel: 'Farbe', positionLabel: 'Position', doneColumnLabel: 'Einträge in dieser Spalte gelten als erledigt',
@@ -45,7 +45,7 @@
     },
     en: {
       documentTitle: 'Work board', appName: 'Work board', newProject: 'New project', createProject: 'Create project', editProject: 'Edit project', deleteProject: 'Delete project', projectsLabel: 'Projects', generalProject: 'General', newColumn: 'New column', newEntry: '+ New entry', boardLabel: 'Kanban board',
-      settings: 'Settings', close: 'Close', languageSection: 'Language', dataSection: 'Backup',
+      settings: 'Settings', close: 'Close', boardNameSection: 'Board name', boardNameHint: 'Shown at the top of the page and as the browser tab title, in every language. Leave it empty to use the default name.', versionLabel: 'Version {version}', languageSection: 'Language', dataSection: 'Backup',
       dataHint: 'Your board is stored only in this browser. Export it regularly as a backup or to move it to another browser.',
       exportBoard: 'Export', importBoard: 'Import', exportHint: 'Downloads the whole board as a JSON file.', importHint: 'Replaces the current board with the content of a JSON file. The current state is backed up in the browser first.', exportDone: 'Export started: "{file}".',
       titleLabel: 'Title', descriptionLabel: 'Description', priorityLabel: 'Priority', projectLabel: 'Project', projectNameLabel: 'Project name', nameLabel: 'Name', colorLabel: 'Color', positionLabel: 'Position', doneColumnLabel: 'Entries in this column count as done',

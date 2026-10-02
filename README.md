@@ -39,9 +39,11 @@ The interface is available in English and German (German name: *Arbeitsboard*).
 
 ### Settings
 
+- Board name: your own name for the board, shown at the top and in the browser tab in every language. Leave it empty to use the default name.
 - Language: English (default) or German.
 - Appearance: light (default), dark, or following the operating system.
 - Export and import of the board.
+- The version number of the app.
 
 ### Security
 

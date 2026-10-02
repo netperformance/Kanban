@@ -164,8 +164,7 @@ h1, h2, h3, p { margin-top: 0; }
 /* Top bar ------------------------------------------------------------------- */
 .app-shell { width: min(1440px, 100%); min-height: 100vh; margin: 0 auto; padding: 32px clamp(18px, 4vw, 56px) 48px; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
-h1 { margin-bottom: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(2rem, 4vw, 3.1rem); letter-spacing: 0; }
-.version { margin-left: 8px; color: var(--muted); font-family: "Trebuchet MS", "Lucida Sans Unicode", sans-serif; font-size: 0.23em; font-weight: 700; vertical-align: middle; }
+h1 { min-width: 0; margin-bottom: 0; overflow-wrap: anywhere; font-family: Georgia, "Times New Roman", serif; font-size: clamp(2rem, 4vw, 3.1rem); letter-spacing: 0; }
 .topbar-controls, .topbar-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .topbar-controls { align-items: center; justify-content: flex-end; }
 .segmented { display: inline-flex; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); }
@@ -296,10 +295,13 @@ dialog::backdrop { background: var(--backdrop); }
 .ticket-description ul, .ticket-description ol, .rich-editor ul, .rich-editor ol { margin: 0 0 8px; padding-left: 20px; }
 .ticket-description ul:last-child, .ticket-description ol:last-child, .rich-editor ul:last-child, .rich-editor ol:last-child { margin-bottom: 0; }
 .form-error { min-height: 1.25em; margin: -5px 0 14px; color: var(--danger); font-size: 0.86rem; font-weight: 700; }
-.dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.dialog-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
 .settings-section { padding: 16px 0; border-top: 1px solid var(--line); }
 .settings-section:last-of-type { margin-bottom: 18px; border-bottom: 1px solid var(--line); }
 .settings-title { margin-bottom: 10px; font-size: 1rem; }
+.settings-input { width: 100%; min-height: 42px; margin-bottom: 8px; padding: 9px 11px; color: var(--ink); border: 1px solid var(--line-strong); border-radius: 5px; background: var(--field); }
+.settings-input::placeholder { color: var(--placeholder); }
+.settings-version { margin: 0 auto 0 0; align-self: center; color: var(--muted); font-size: 0.82rem; }
 .settings-hint { margin: 0; color: var(--muted); font-size: 0.86rem; line-height: 1.45; }
 .settings-section > .settings-hint { margin-bottom: 14px; }
 .settings-row { display: grid; grid-template-columns: 130px 1fr; align-items: center; gap: 14px; margin-bottom: 12px; }

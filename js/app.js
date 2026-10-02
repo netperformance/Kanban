@@ -5,6 +5,8 @@
   const { translate } = ns.i18n;
   const { sanitizeDescription } = ns.sanitize;
   const model = ns.model;
+  // Keep in step with "version" in package.json.
+  const APP_VERSION = '0.0.9';
   const STORAGE_KEY = 'personal-kanban-board.v1';
   const MAX_IMPORT_MEGABYTES = 5;
   const INFO_NOTICE_MILLISECONDS = 6000;
@@ -23,6 +25,8 @@
   const settingsDialog = $('#settings-dialog');
   const settingsStatus = $('#settings-status');
   const closeSettingsButton = $('#close-settings');
+  const boardNameInput = $('#board-name-input');
+  const settingsVersion = $('#settings-version');
   const storyDialog = $('#story-dialog');
   const storyForm = $('#story-form');
   const storyIdInput = $('#task-id');
@@ -349,6 +353,16 @@
   // ---------------------------------------------------------------------------
   // Rendering
 
+  // The own board name applies to every language. Without one, the default
+  // name of the current language is used.
+  function applyBoardName() {
+    const name = state.boardName || t('appName');
+    document.querySelector('#board-name').textContent = name;
+    document.title = name;
+    boardNameInput.placeholder = t('appName');
+    if (document.activeElement !== boardNameInput) boardNameInput.value = state.boardName;
+  }
+
   function applyLanguage() {
     document.documentElement.lang = state.language;
     document.querySelectorAll('[data-i18n]').forEach((element) => { element.textContent = t(element.dataset.i18n); });
@@ -363,6 +377,8 @@
       }
     });
     document.querySelectorAll('[data-language]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.language === state.language)));
+    settingsVersion.textContent = t('versionLabel', { version: APP_VERSION });
+    applyBoardName();
   }
 
   // Line icons for the entry types and the due date, drawn on a 24 by 24 grid.
@@ -1181,6 +1197,17 @@
 
   // The search filters while typing. It is stored shortly after the last key
   // press, so not every single key press is written to the storage.
+  // The board name changes on the page while typing and is stored shortly
+  // after the last key press.
+  let boardNameSaveTimer = null;
+  boardNameInput.addEventListener('input', () => {
+    const boardName = model.normalizeBoardName(boardNameInput.value);
+    state.boardName = boardName;
+    applyBoardName();
+    clearTimeout(boardNameSaveTimer);
+    boardNameSaveTimer = setTimeout(() => setView((draft) => { draft.boardName = boardName; }), 400);
+  });
+
   let searchSaveTimer = null;
   searchInput.addEventListener('input', () => {
     const project = getProject();
