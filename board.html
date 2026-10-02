@@ -1,10 +1,10 @@
 <!doctype html>
 <!-- Work board (Arbeitsboard). Copyright (c) 2026 Aaron Kreis (https://aaron.de). Licensed under the MIT License, see LICENSE. -->
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
+  <meta name="color-scheme" content="light dark">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' file:; style-src 'self' file:; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title data-i18n="documentTitle">Work board</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2320251f'/%3E%3Crect x='12' y='14' width='11' height='36' rx='3' fill='%23d95d45'/%3E%3Crect x='27' y='21' width='11' height='29' rx='3' fill='%23c58b12'/%3E%3Crect x='42' y='10' width='10' height='40' rx='3' fill='%2334835b'/%3E%3C/svg%3E">
@@ -37,7 +37,14 @@
       </div>
     </nav>
 
-    <div class="filter-bar" id="filter-bar" role="group" data-i18n-aria-label="filterLabel" aria-label="Filter by type"></div>
+    <div class="filter-bar" id="filter-bar">
+      <div class="search-field">
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>
+        <input id="search-input" type="search" maxlength="100" autocomplete="off" spellcheck="false" data-i18n-aria-label="searchLabel" aria-label="Search entries" data-i18n-placeholder="searchPlaceholder" placeholder="Search…">
+      </div>
+      <div class="filter-chips" id="filter-chips" role="group" data-i18n-aria-label="filterLabel" aria-label="Filter by type"></div>
+      <p class="filter-status" id="filter-status" role="status"></p>
+    </div>
 
     <section class="board" id="board" role="tabpanel"></section>
     <footer class="board-credit"><a href="https://aaron.de">aaron.de</a></footer>
@@ -49,9 +56,18 @@
 
       <section class="settings-section" aria-labelledby="settings-language-title">
         <h3 class="settings-title" id="settings-language-title" data-i18n="languageSection">Language</h3>
-        <div class="language-switch" role="group" aria-labelledby="settings-language-title">
+        <div class="segmented" role="group" aria-labelledby="settings-language-title">
           <button type="button" data-language="en" lang="en" aria-pressed="true">English</button>
           <button type="button" data-language="de" lang="de" aria-pressed="false">Deutsch</button>
+        </div>
+      </section>
+
+      <section class="settings-section" aria-labelledby="settings-appearance-title">
+        <h3 class="settings-title" id="settings-appearance-title" data-i18n="appearanceSection">Appearance</h3>
+        <div class="segmented" role="group" aria-labelledby="settings-appearance-title">
+          <button type="button" data-theme-option="light" aria-pressed="true" data-i18n="themeLight">Light</button>
+          <button type="button" data-theme-option="dark" aria-pressed="false" data-i18n="themeDark">Dark</button>
+          <button type="button" data-theme-option="system" aria-pressed="false" data-i18n="themeSystem">System</button>
         </div>
       </section>
 
@@ -95,11 +111,17 @@
         </div>
         <div id="story-description" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-i18n-aria-label="descriptionLabel" data-i18n-placeholder="descriptionPlaceholder" aria-label="Description" data-placeholder="Enter a description"></div>
       </div>
-      <div class="field">
-        <label for="story-project" data-i18n="projectLabel">Project</label>
-        <select id="story-project"></select>
-      </div>
       <div class="field-row">
+        <div class="field">
+          <label for="story-project" data-i18n="projectLabel">Project</label>
+          <select id="story-project"></select>
+        </div>
+        <div class="field">
+          <label for="story-column" data-i18n="columnSelectLabel">Column</label>
+          <select id="story-column"></select>
+        </div>
+      </div>
+      <div class="field-row field-row-3">
         <div class="field">
           <label for="story-type" data-i18n="typeLabel">Type</label>
           <select id="story-type">
@@ -117,6 +139,10 @@
             <option value="high" data-i18n="priority.high">High</option>
             <option value="critical" data-i18n="priority.critical">Critical</option>
           </select>
+        </div>
+        <div class="field">
+          <label for="story-due" data-i18n="dueLabel">Due date</label>
+          <input id="story-due" type="date">
         </div>
       </div>
       <p class="form-error" id="story-error" aria-live="polite"></p>

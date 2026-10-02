@@ -526,3 +526,183 @@ test('Tickets lassen sich per Drag and Drop verschieben', async ({ page }) => {
   await page.dragAndDrop('.ticket[data-task-id=a]', '[data-task-list=done]');
   expect((await stored(page)).projects[0].tasks[0].columnId).toBe('done');
 });
+
+// --- Fälligkeitsdatum, Suche, Anlegen in einer Spalte, Farbschema -------------
+
+function isoDate(offsetDays) {
+  const date = new Date();
+  date.setDate(date.getDate() + offsetDays);
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+test('Fälligkeit: steht im Kopf der Karte, heute, morgen, überfällig und später unterschiedlich', async ({ page }) => {
+  const T = (id, due, columnId = 'backlog') => ({ id, title: `T${id}`, description: '', columnId, due });
+  await openBoard(page, { ...boardState([T('a', isoDate(0)), T('b', isoDate(1)), T('c', isoDate(-3)), T('d', '2030-01-15'), T('e', isoDate(-3), 'done')]), language: 'en' });
+  const due = (id) => page.locator(`.ticket[data-task-id=${id}] .ticket-meta .ticket-due`);
+  await expect(due('a')).toHaveText('Today');
+  await expect(due('a')).toHaveClass(/is-soon/);
+  await expect(due('b')).toHaveText('Tomorrow');
+  await expect(due('c')).toHaveClass(/is-overdue/);
+  await expect(due('c')).toHaveAttribute('title', /^Overdue since /);
+  await expect(due('d')).toHaveText('15 Jan 2030');
+  await expect(due('d')).toHaveAttribute('title', 'Due 15 Jan 2030');
+  await expect(due('d')).not.toHaveClass(/is-soon|is-overdue/);
+  // In a done column nothing is highlighted any more.
+  await expect(due('e')).not.toHaveClass(/is-overdue/);
+  // No word in front of the date on the card.
+  expect(await page.locator('.ticket-due').allTextContents()).not.toContainEqual(expect.stringMatching(/Due|Overdue/));
+  await expect(page.locator('.ticket[data-task-id=c]')).toHaveAttribute('aria-label', /Overdue since/);
+});
+
+test('Fälligkeit: Datum im Dialog setzen, auf Deutsch anzeigen und wieder entfernen', async ({ page }) => {
+  await openBoard(page, boardState([]));
+  await page.click('#create-story');
+  await page.fill('#story-title', 'Mit Termin');
+  await page.fill('#story-due', '2030-01-15');
+  await page.click('#story-form button[type=submit]');
+  await expect(page.locator('.ticket-meta .ticket-due')).toHaveText('15. Jan. 2030');
+  expect((await stored(page)).projects[0].tasks[0].due).toBe('2030-01-15');
+  await page.click('[data-action=edit-task]');
+  await expect(page.locator('#story-due')).toHaveValue('2030-01-15');
+  await page.fill('#story-due', '');
+  await page.click('#story-form button[type=submit]');
+  await expect(page.locator('.ticket-due')).toHaveCount(0);
+  expect((await stored(page)).projects[0].tasks[0].due).toBe('');
+});
+
+function searchBoard() {
+  const T = (id, type, title, description = '') => ({ id, type, title, description, columnId: 'backlog' });
+  return {
+    ...boardState([
+      T('1', 'bug', 'Login schlägt fehl', 'Nur in <b>Safari</b>'),
+      T('2', 'task', 'Domain einrichten'),
+      T('3', 'task', 'Login-Seite gestalten'),
+      T('4', 'idea', 'Dunkles Farbschema', 'Kontrast für Safari prüfen')
+    ]),
+    language: 'en'
+  };
+}
+
+test('Suche: findet Titel und Beschreibung, kombiniert mit Typfilter, Escape leert', async ({ page }) => {
+  await openBoard(page, searchBoard());
+  await page.fill('#search-input', 'login');
+  await expect(page.locator('.ticket h3')).toHaveText(['Login schlägt fehl', 'Login-Seite gestalten']);
+  await expect(page.locator('#filter-status')).toHaveText('2 of 4 entries shown');
+  await expect(page.locator('.column').first().locator('.count')).toHaveText('2 / 4');
+
+  await page.fill('#search-input', 'safari');
+  await expect(page.locator('.ticket h3')).toHaveText(['Login schlägt fehl', 'Dunkles Farbschema']);
+  await page.fill('#search-input', 'safari login');
+  await expect(page.locator('.ticket h3')).toHaveText(['Login schlägt fehl']);
+
+  await page.fill('#search-input', 'login');
+  await chip(page, 'task').click();
+  await expect(page.locator('.ticket h3')).toHaveText(['Login-Seite gestalten']);
+  await chip(page, 'all').click();
+
+  await page.focus('#search-input');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#search-input')).toHaveValue('');
+  await expect(page.locator('.ticket')).toHaveCount(4);
+});
+
+test('Suche: wird je Projekt gespeichert, "/" springt ins Suchfeld', async ({ page }) => {
+  await openBoard(page, searchBoard());
+  await page.locator('body').click();
+  await page.keyboard.press('/');
+  await expect(page.locator('#search-input')).toBeFocused();
+  await page.keyboard.type('domain');
+  await expect(page.locator('.ticket h3')).toHaveText(['Domain einrichten']);
+  await expect.poll(async () => (await stored(page)).projects[0].filter?.search).toBe('domain');
+  await page.reload();
+  await expect(page.locator('#search-input')).toHaveValue('domain');
+  await expect(page.locator('.ticket')).toHaveCount(1);
+
+  await page.click('#create-project');
+  await page.fill('#project-title', 'Zweites');
+  await page.click('#project-form button[type=submit]');
+  await expect(page.locator('#search-input')).toHaveValue('');
+  await page.locator('.project-tab').first().click();
+  await expect(page.locator('#search-input')).toHaveValue('domain');
+});
+
+test('Suche: neuer Eintrag, der nicht passt, hebt die Suche auf und bleibt sichtbar', async ({ page }) => {
+  await openBoard(page, searchBoard());
+  await page.fill('#search-input', 'login');
+  await createStory(page, 'Ganz etwas anderes');
+  await expect(page.locator('#search-input')).toHaveValue('');
+  await expect(page.locator('.ticket h3', { hasText: 'Ganz etwas anderes' })).toBeVisible();
+});
+
+test('Anlegen in einer Spalte: "+" setzt die Spalte vor, Spalte lässt sich im Dialog wechseln', async ({ page }) => {
+  await openBoard(page, { ...boardState([]), language: 'en' });
+  const add = page.locator('.column').nth(1).locator('[data-action=add-task]');
+  await expect(add).toHaveAttribute('aria-label', 'New entry in Done');
+  await add.click();
+  await expect(page.locator('#story-column')).toHaveValue('done');
+  await page.fill('#story-title', 'Schon erledigt');
+  await page.click('#story-form button[type=submit]');
+  expect((await stored(page)).projects[0].tasks[0].columnId).toBe('done');
+  await expect(page.locator('.column').nth(1).locator('.ticket h3')).toHaveText(['Schon erledigt']);
+
+  await page.click('[data-action=edit-task]');
+  await page.selectOption('#story-column', 'backlog');
+  await page.click('#story-form button[type=submit]');
+  await expect(page.locator('.column').first().locator('.ticket h3')).toHaveText(['Schon erledigt']);
+});
+
+test('Anlegen in einer Spalte: Projektwechsel im Dialog lädt dessen Spalten', async ({ page }) => {
+  await openBoard(page, { ...boardState([]), language: 'en' });
+  await page.click('#create-project');
+  await page.fill('#project-title', 'Zweites');
+  await page.click('#project-form button[type=submit]');
+  await page.locator('.project-tab').first().click();
+  await page.click('#create-story');
+  await expect(page.locator('#story-column option')).toHaveText(['Backlog', 'Done']);
+  await page.selectOption('#story-project', { label: 'Zweites' });
+  await expect(page.locator('#story-column option')).toHaveText(['Backlog', 'In Work', 'Done']);
+  await expect(page.locator('#story-column')).toHaveValue('backlog');
+});
+
+const background = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+
+test('Farbschema: Hell ist Standard, auch wenn das Betriebssystem dunkel ist', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await openBoard(page);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  expect(await background(page)).toBe('rgb(247, 244, 237)');
+  await openSettings(page);
+  await expect(page.locator('[data-theme-option=light]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.segmented').nth(1).locator('button')).toHaveText(['Light', 'Dark', 'System']);
+});
+
+test('Farbschema: Hell, Dunkel und Wie System, gespeichert über das Neuladen', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' });
+  await openBoard(page, { ...boardState([{ id: 'a', title: 'Schwarz', description: '<font color="#20251f">Text</font>', columnId: 'backlog' }]), language: 'en' });
+  const light = await background(page);
+  await openSettings(page);
+  await expect(page.locator('[data-theme-option=light]')).toHaveAttribute('aria-pressed', 'true');
+  await page.click('[data-theme-option=dark]');
+  await page.click('#close-settings');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  const dark = await background(page);
+  expect(dark).not.toBe(light);
+  // Text stored as "black" stays readable on the dark background.
+  expect(await page.locator('.ticket-description font').evaluate((element) => getComputedStyle(element).color)).toBe('rgb(233, 231, 224)');
+  await page.reload();
+  expect(await background(page)).toBe(dark);
+
+  await openSettings(page);
+  await page.click('[data-theme-option=system]');
+  await page.click('#close-settings');
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme', /./);
+  expect(await background(page)).toBe(light);
+  await page.emulateMedia({ colorScheme: 'dark' });
+  expect(await background(page)).toBe(dark);
+
+  await openSettings(page);
+  await page.click('[data-theme-option=light]');
+  await page.click('#close-settings');
+  expect(await background(page)).toBe(light);
+});

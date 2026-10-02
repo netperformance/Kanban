@@ -14,10 +14,13 @@ The interface is available in English and German (German name: *Arbeitsboard*).
 - **Columns:** create, rename, recolour, reorder and delete. Entries in a deleted column move to the neighbouring column.
 - **Done columns:** mark any column as done. The tab of each project shows how many open entries it has.
 - **Entries:** title, formatted description and one of four priorities (low, normal, high, critical). Critical entries get a red frame.
+- **Due dates:** entries due today or tomorrow are highlighted, overdue entries are marked in red. Entries in a done column are no longer highlighted.
 - **Entry types:** task (default), story, bug and idea. Each type has its own icon and label, while priorities use colour, so type and priority are never confused.
 - **Drag and drop** to move entries between and within columns, plus buttons to move them one column left or right.
-- **Move entries between projects** from the edit dialog.
-- **Filter by type:** show all entries, a single type or any combination, for example only bugs or bugs and tasks. Each project keeps its own filter, and the filter is remembered for the next visit. The filter bar always says how many entries are shown, and while a filter is active the column counters read "shown / total".
+- **Quick add:** every column has a **+** button that creates an entry directly in that column.
+- **Move entries between projects and columns** from the edit dialog.
+- **Search** in titles and descriptions. Several words narrow the result; press <kbd>/</kbd> to jump to the search field and <kbd>Esc</kbd> to clear it.
+- **Filter by type:** show all entries, a single type or any combination, for example only bugs or bugs and tasks. Search and filter work together. Each project keeps its own search and filter, and both are remembered for the next visit. The filter bar always says how many entries are shown, and while a filter is active the column counters read "shown / total".
 
 ### Description editor
 
@@ -37,6 +40,7 @@ The interface is available in English and German (German name: *Arbeitsboard*).
 ### Settings
 
 - Language: English (default) or German.
+- Appearance: light (default), dark, or following the operating system.
 - Export and import of the board.
 
 ### Security

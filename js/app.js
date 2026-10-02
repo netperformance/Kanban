@@ -14,7 +14,9 @@
   const board = $('.board');
   const projectTabs = $('#project-tabs');
   const projectActions = $('#project-actions');
-  const filterBar = $('#filter-bar');
+  const filterChips = $('#filter-chips');
+  const filterStatus = $('#filter-status');
+  const searchInput = $('#search-input');
   const noticeArea = $('#notice-area');
   const importInput = $('#import-file');
   const settingsDialog = $('#settings-dialog');
@@ -29,6 +31,8 @@
   const storyPriorityInput = $('#story-priority');
   const storyTypeInput = $('#story-type');
   const storyProjectInput = $('#story-project');
+  const storyColumnInput = $('#story-column');
+  const storyDueInput = $('#story-due');
   const storyDialogTitle = $('#story-dialog-title');
   const storyError = $('#story-error');
   const columnDialog = $('#column-dialog');
@@ -162,14 +166,17 @@
   function reloadFromStorage() {
     const loaded = store.load();
     if (loaded.problem && loaded.problem.kind === 'unavailable') return false;
-    const before = JSON.stringify(state.projects);
+    // Filters and search are view settings; changing them is no change of the board content.
+    const content = (source) => JSON.stringify(source.projects.map(({ id, title, columns, tasks }) => ({ id, title, columns, tasks })));
+    const before = content(state);
     const { activeProjectId } = state;
     state = loaded.state;
     if (findProject(state, activeProjectId)) state.activeProjectId = activeProjectId;
     if (loaded.problem) reportLoadProblem(loaded.problem);
     applyLanguage();
+    applyTheme();
     render();
-    return before !== JSON.stringify(state.projects);
+    return before !== content(state);
   }
 
   // Every change to the board goes through commit(). The change is made on a
@@ -222,32 +229,105 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Type filter (stored per project)
+  // Filter: entry types and search text, stored per project
 
   function typeOf(task) {
     return model.isType(task.type) ? task.type : model.DEFAULT_TYPE;
   }
 
-  function filterTypes(project) {
-    return model.normalizeFilter(project.filter).types;
+  function projectFilter(project) {
+    return model.normalizeFilter(project.filter);
   }
 
-  function isShown(task, types) {
-    return types.length === 0 || types.includes(typeOf(task));
+  function searchTerms(filter) {
+    return filter.search.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
   }
 
-  function setFilter(projectId, types) {
+  // Plain text of a description, for the search. Cached, because the search
+  // runs on every key press.
+  const plainTextCache = new Map();
+  function plainText(html) {
+    if (!html) return '';
+    if (!plainTextCache.has(html)) {
+      if (plainTextCache.size > 1000) plainTextCache.clear();
+      const template = document.createElement('template');
+      template.innerHTML = html;
+      plainTextCache.set(html, template.content.textContent);
+    }
+    return plainTextCache.get(html);
+  }
+
+  // Every search word must appear in the title or the description.
+  function matchesSearch(task, terms) {
+    if (terms.length === 0) return true;
+    const text = `${task.title} ${plainText(task.description)}`.toLocaleLowerCase();
+    return terms.every((term) => text.includes(term));
+  }
+
+  function isShown(task, filter, terms) {
+    return (filter.types.length === 0 || filter.types.includes(typeOf(task))) && matchesSearch(task, terms);
+  }
+
+  function isFiltered(filter) {
+    return filter.types.length > 0 || searchTerms(filter).length > 0;
+  }
+
+  function setFilterTypes(projectId, types) {
     setView((draft) => {
       const project = findProject(draft, projectId);
-      if (project) project.filter = model.normalizeFilter({ types });
+      if (project) project.filter = model.normalizeFilter({ ...project.filter, types });
     });
     render();
   }
 
-  // A new or changed entry must not disappear behind the filter right after saving.
-  function includeTypeInFilter(project, type) {
-    const types = filterTypes(project);
-    if (types.length > 0 && !types.includes(type)) project.filter = model.normalizeFilter({ types: [...types, type] });
+  // A new or changed entry must not disappear behind the filter right after
+  // saving: its type is added to the filter, and a search it does not match is cleared.
+  function keepVisible(project, task) {
+    const filter = projectFilter(project);
+    const type = typeOf(task);
+    const types = filter.types.length > 0 && !filter.types.includes(type) ? [...filter.types, type] : filter.types;
+    const search = matchesSearch(task, searchTerms(filter)) ? filter.search : '';
+    project.filter = model.normalizeFilter({ types, search });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Due dates
+
+  // Short date for the entry header. The year is left out if it is the current year.
+  function formatDate(value, withYear = false) {
+    const [year, month, day] = value.split('-').map(Number);
+    const locale = state.language === 'de' ? 'de-DE' : 'en-GB';
+    const options = { day: 'numeric', month: 'short' };
+    if (withYear || year !== new Date().getFullYear()) options.year = 'numeric';
+    return new Intl.DateTimeFormat(locale, options).format(new Date(year, month - 1, day));
+  }
+
+  // Due date of an entry: a short label for the header ("Today", "15 Jan") and
+  // a full sentence for screen readers and the tooltip ("Overdue since 1 Oct 2026").
+  // Entries in a done column are not highlighted.
+  function dueInfo(project, task) {
+    if (!model.isDate(task.due)) return null;
+    const date = formatDate(task.due, true);
+    const label = formatDate(task.due);
+    const column = project.columns.find((item) => item.id === task.columnId);
+    const days = model.daysUntil(task.due);
+    if (column && column.done) return { label, text: t('dueOn', { date }), state: '' };
+    if (days < 0) return { label, text: t('dueOverdue', { date }), state: 'is-overdue' };
+    if (days === 0) return { label: t('dueShortToday'), text: t('dueToday'), state: 'is-soon' };
+    if (days === 1) return { label: t('dueShortTomorrow'), text: t('dueTomorrow'), state: 'is-soon' };
+    return { label, text: t('dueOn', { date }), state: '' };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Colour scheme
+
+  function applyTheme() {
+    if (state.theme === 'system') {
+      delete document.documentElement.dataset.theme;
+    } else {
+      document.documentElement.dataset.theme = state.theme;
+    }
+    document.querySelectorAll('[data-theme-option]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.themeOption === state.theme)));
   }
 
   // ---------------------------------------------------------------------------
@@ -269,8 +349,9 @@
     document.querySelectorAll('[data-language]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.language === state.language)));
   }
 
-  // Line icons for the entry types, drawn on a 24 by 24 grid.
-  const TYPE_ICONS = Object.freeze({
+  // Line icons for the entry types and the due date, drawn on a 24 by 24 grid.
+  const ICONS = Object.freeze({
+    calendar: ['M6 4.5h12a2.5 2.5 0 0 1 2.5 2.5v11a2.5 2.5 0 0 1-2.5 2.5H6A2.5 2.5 0 0 1 3.5 18V7A2.5 2.5 0 0 1 6 4.5z', 'M3.5 9.5h17M8 2.5v4M16 2.5v4'],
     task: ['M7.5 3.5h9a4 4 0 0 1 4 4v9a4 4 0 0 1-4 4h-9a4 4 0 0 1-4-4v-9a4 4 0 0 1 4-4z', 'M8 12.5l3 3 5-6'],
     story: ['M6.5 3.5h11v17l-5.5-3.8-5.5 3.8z'],
     bug: ['M12 7c2.8 0 5 2.9 5 6.5S14.8 20 12 20s-5-2.9-5-6.5S9.2 7 12 7z', 'M12 7v13M7 11H3.5M7 16H3.5M17 11h3.5M17 16h3.5M9.5 6L7.5 4M14.5 6l2-2'],
@@ -281,17 +362,21 @@
   function createTypeLabel(type) {
     const label = document.createElement('span');
     label.className = `type-label type-${type}`;
-    label.append(createTypeIcon(type), document.createTextNode(t(`type.${type}`)));
+    label.title = t(`type.${type}`);
+    const text = document.createElement('span');
+    text.className = 'type-text';
+    text.textContent = t(`type.${type}`);
+    label.append(createIcon(type), text);
     return label;
   }
 
-  function createTypeIcon(type) {
+  function createIcon(name) {
     const icon = document.createElementNS(SVG_NAMESPACE, 'svg');
     icon.setAttribute('class', 'type-icon');
     icon.setAttribute('viewBox', '0 0 24 24');
     icon.setAttribute('aria-hidden', 'true');
     icon.setAttribute('focusable', 'false');
-    TYPE_ICONS[type].forEach((data) => {
+    ICONS[name].forEach((data) => {
       const path = document.createElementNS(SVG_NAMESPACE, 'path');
       path.setAttribute('d', data);
       icon.append(path);
@@ -305,7 +390,7 @@
     chip.className = 'filter-chip';
     chip.dataset.filter = value;
     chip.setAttribute('aria-pressed', String(pressed));
-    if (value !== 'all') chip.append(createTypeIcon(value));
+    if (value !== 'all') chip.append(createIcon(value));
     const amount = document.createElement('span');
     amount.className = 'filter-count';
     amount.textContent = String(count);
@@ -314,19 +399,19 @@
   }
 
   function renderFilterBar(project) {
-    const types = filterTypes(project);
-    const children = [createFilterChip('all', t('filterAll'), project.tasks.length, types.length === 0)];
+    const filter = projectFilter(project);
+    const terms = searchTerms(filter);
+    const chips = [createFilterChip('all', t('filterAll'), project.tasks.length, filter.types.length === 0)];
     model.TYPE_KEYS.forEach((type) => {
       const count = project.tasks.filter((task) => typeOf(task) === type).length;
-      children.push(createFilterChip(type, t(`type.${type}`), count, types.includes(type)));
+      chips.push(createFilterChip(type, t(`type.${type}`), count, filter.types.includes(type)));
     });
+    filterChips.replaceChildren(...chips);
     // The number of shown entries is always visible, also when "All" is selected.
-    const status = document.createElement('p');
-    status.className = 'filter-status';
-    status.setAttribute('role', 'status');
-    status.textContent = tCount('filterStatus', project.tasks.length, { shown: project.tasks.filter((task) => isShown(task, types)).length, total: project.tasks.length });
-    children.push(status);
-    filterBar.replaceChildren(...children);
+    const shown = project.tasks.filter((task) => isShown(task, filter, terms)).length;
+    filterStatus.textContent = tCount('filterStatus', project.tasks.length, { shown, total: project.tasks.length });
+    // While the user types, the field keeps what is typed.
+    if (document.activeElement !== searchInput && searchInput.value !== filter.search) searchInput.value = filter.search;
   }
 
   function createButton(label, text, action, id, className = 'icon-button', disabled = false) {
@@ -345,12 +430,13 @@
   function createTicket(project, task) {
     const priority = model.isPriority(task.priority) ? task.priority : 'normal';
     const type = model.isType(task.type) ? task.type : model.DEFAULT_TYPE;
+    const due = dueInfo(project, task);
     const ticket = document.createElement('article');
     ticket.className = `ticket ${priority === 'critical' ? 'is-critical' : ''}`.trim();
     ticket.draggable = true;
     ticket.dataset.taskId = task.id;
     ticket.dataset.type = type;
-    ticket.setAttribute('aria-label', t('taskPriority', { type: t(`type.${type}`), title: task.title, priority: t(`priority.${priority}`) }));
+    ticket.setAttribute('aria-label', t('taskPriority', { type: t(`type.${type}`), title: task.title, priority: t(`priority.${priority}`), due: due ? `, ${due.text}` : '' }));
 
     const main = document.createElement('div');
     main.className = 'ticket-main';
@@ -359,7 +445,20 @@
     const badge = document.createElement('span');
     badge.className = `priority-badge priority-${priority}`;
     badge.textContent = t(`priority.${priority}`);
-    meta.append(createTypeLabel(type), badge);
+    // Header: type on the left, due date and priority on the right.
+    const metaEnd = document.createElement('div');
+    metaEnd.className = 'ticket-meta-end';
+    if (due) {
+      const dueLabel = document.createElement('span');
+      dueLabel.className = `ticket-due ${due.state}`.trim();
+      dueLabel.title = due.text;
+      const icon = createIcon('calendar');
+      icon.setAttribute('class', 'type-icon');
+      dueLabel.append(icon, document.createTextNode(due.label));
+      metaEnd.append(dueLabel);
+    }
+    metaEnd.append(badge);
+    meta.append(createTypeLabel(type), metaEnd);
     const heading = document.createElement('h3');
     heading.textContent = task.title;
     main.append(meta, heading);
@@ -409,12 +508,14 @@
     const count = document.createElement('span');
     count.className = 'count';
     const tasks = project.tasks.filter((task) => task.columnId === column.id);
-    const types = filterTypes(project);
-    const shownTasks = tasks.filter((task) => isShown(task, types));
-    count.textContent = types.length > 0 ? `${shownTasks.length} / ${tasks.length}` : String(tasks.length);
-    count.classList.toggle('is-filtered', types.length > 0);
+    const filter = projectFilter(project);
+    const terms = searchTerms(filter);
+    const filtered = isFiltered(filter);
+    const shownTasks = tasks.filter((task) => isShown(task, filter, terms));
+    count.textContent = filtered ? `${shownTasks.length} / ${tasks.length}` : String(tasks.length);
+    count.classList.toggle('is-filtered', filtered);
     headingGroup.append(heading, count);
-    header.append(headingGroup);
+    header.append(headingGroup, createButton(t('newEntryIn', { title: column.title }), '+', 'add-task', column.id, 'icon-button column-add'));
 
     const list = document.createElement('div');
     list.className = 'task-list';
@@ -473,7 +574,24 @@
     projectActions.hidden = project.id === model.GENERAL_PROJECT_ID;
     renderFilterBar(project);
     board.replaceChildren(...project.columns.map((column, index) => createColumn(project, column, index)));
+    compactEntryHeaders();
   }
+
+  // An entry header holds type, due date and priority. If they do not fit into
+  // one line, the type is shown as icon only, instead of breaking the line.
+  function compactEntryHeaders() {
+    board.querySelectorAll('.ticket-meta').forEach((meta) => {
+      meta.classList.remove('is-compact');
+      const end = meta.querySelector('.ticket-meta-end');
+      if (end && end.offsetTop > meta.firstElementChild.offsetTop) meta.classList.add('is-compact');
+    });
+  }
+
+  let compactFrame = 0;
+  new ResizeObserver(() => {
+    cancelAnimationFrame(compactFrame);
+    compactFrame = requestAnimationFrame(compactEntryHeaders);
+  }).observe(board);
 
   // ---------------------------------------------------------------------------
   // Dialogs
@@ -488,7 +606,21 @@
     if (dialog.open) dialog.close();
   }
 
-  function openStoryDialog(task = null) {
+  // Fills the column selection with the columns of a project. Keeps the
+  // preferred column if the project has it, otherwise the entry column.
+  function fillColumnSelect(projectId, preferredColumnId) {
+    const project = getProject(projectId);
+    storyColumnInput.replaceChildren(...project.columns.map((column) => {
+      const option = document.createElement('option');
+      option.value = column.id;
+      option.textContent = column.title;
+      return option;
+    }));
+    storyColumnInput.value = project.columns.some((column) => column.id === preferredColumnId) ? preferredColumnId : entryColumnId(project);
+  }
+
+  // columnId: column for a new entry, from the "+" button of a column.
+  function openStoryDialog(task = null, columnId = null) {
     const project = getProject();
     storyError.textContent = '';
     storyForm.reset();
@@ -501,6 +633,7 @@
     descriptionEditor.reset();
     storyPriorityInput.value = task && model.isPriority(task.priority) ? task.priority : 'normal';
     storyTypeInput.value = task && model.isType(task.type) ? task.type : model.DEFAULT_TYPE;
+    storyDueInput.value = task && model.isDate(task.due) ? task.due : '';
     storyProjectInput.replaceChildren(...state.projects.map((item) => {
       const option = document.createElement('option');
       option.value = item.id;
@@ -509,6 +642,7 @@
     }));
     // New entries go into the project that is open.
     storyProjectInput.value = project.id;
+    fillColumnSelect(project.id, task ? task.columnId : columnId);
     showDialog(storyDialog, storyTitleInput);
   }
 
@@ -833,8 +967,15 @@
     const taskId = storyIdInput.value;
     const sourceProjectId = storyDialog.dataset.sourceProjectId;
     const destinationProjectId = storyProjectInput.value;
-    if (!findProject(state, destinationProjectId)) {
+    const due = model.isDate(storyDueInput.value) ? storyDueInput.value : '';
+    const destinationProject = findProject(state, destinationProjectId);
+    if (!destinationProject) {
       storyError.textContent = t('projectMissing');
+      return;
+    }
+    const columnId = storyColumnInput.value;
+    if (!destinationProject.columns.some((column) => column.id === columnId)) {
+      storyError.textContent = t('columnMissing');
       return;
     }
     if (taskId) {
@@ -846,19 +987,22 @@
     }
     const saved = commit((draft) => {
       const destination = findProject(draft, destinationProjectId);
-      includeTypeInFilter(destination, type);
-      if (!taskId) {
-        destination.tasks.push({ id: model.createId(), type, title, description, priority, columnId: entryColumnId(destination) });
-        return;
-      }
-      const source = findProject(draft, sourceProjectId);
-      const task = source.tasks.find((item) => item.id === taskId);
-      Object.assign(task, { type, title, description, priority });
-      if (destination.id !== source.id) {
-        source.tasks = source.tasks.filter((item) => item.id !== taskId);
-        task.columnId = entryColumnId(destination);
+      let task;
+      if (taskId) {
+        const source = findProject(draft, sourceProjectId);
+        task = source.tasks.find((item) => item.id === taskId);
+        Object.assign(task, { type, title, description, priority, due });
+        // Moved to another project or column: the entry goes to the end of the target column.
+        if (destination.id !== source.id || task.columnId !== columnId) {
+          source.tasks = source.tasks.filter((item) => item.id !== taskId);
+          task.columnId = columnId;
+          destination.tasks.push(task);
+        }
+      } else {
+        task = { id: model.createId(), type, title, description, priority, due, columnId };
         destination.tasks.push(task);
       }
+      keepVisible(destination, task);
     }, storyError);
     if (saved) closeDialog(storyDialog);
   });
@@ -972,19 +1116,68 @@
     render();
   }));
 
-  filterBar.addEventListener('click', (event) => {
+  filterChips.addEventListener('click', (event) => {
     const chip = event.target.closest('[data-filter]');
     if (!chip) return;
     const project = getProject();
     const value = chip.dataset.filter;
     let types = [];
     if (value !== 'all') {
-      const current = filterTypes(project);
+      const current = projectFilter(project).types;
       types = current.includes(value) ? current.filter((type) => type !== value) : [...current, value];
     }
-    setFilter(project.id, types);
-    const again = [...filterBar.querySelectorAll('[data-filter]')].find((item) => item.dataset.filter === value);
+    setFilterTypes(project.id, types);
+    const again = [...filterChips.querySelectorAll('[data-filter]')].find((item) => item.dataset.filter === value);
     if (again) again.focus();
+  });
+
+  // The search filters while typing. It is stored shortly after the last key
+  // press, so not every single key press is written to the storage.
+  let searchSaveTimer = null;
+  searchInput.addEventListener('input', () => {
+    const project = getProject();
+    const search = searchInput.value.slice(0, model.LIMITS.search);
+    project.filter = model.normalizeFilter({ ...project.filter, search });
+    render();
+    clearTimeout(searchSaveTimer);
+    searchSaveTimer = setTimeout(() => {
+      setView((draft) => {
+        const target = findProject(draft, project.id);
+        if (target) target.filter = model.normalizeFilter({ ...target.filter, search });
+      });
+    }, 400);
+  });
+
+  searchInput.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || searchInput.value === '') return;
+    event.preventDefault();
+    searchInput.value = '';
+    searchInput.dispatchEvent(new Event('input'));
+  });
+
+  // "/" jumps to the search field, unless the user is typing somewhere.
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return;
+    const target = event.target;
+    if (target.closest('input, textarea, select, [contenteditable="true"], dialog[open]')) return;
+    event.preventDefault();
+    searchInput.focus();
+    searchInput.select();
+  });
+
+  storyProjectInput.addEventListener('change', () => fillColumnSelect(storyProjectInput.value, storyColumnInput.value));
+
+  document.querySelectorAll('[data-theme-option]').forEach((button) => button.addEventListener('click', () => {
+    const theme = button.dataset.themeOption;
+    if (theme === state.theme || !model.THEMES.includes(theme)) return;
+    setView((draft) => { draft.theme = theme; });
+    applyTheme();
+  }));
+
+  // Due dates are compared with today. When the page comes back into view
+  // (for example the next morning), the highlighting is brought up to date.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') render();
   });
 
   projectTabs.addEventListener('click', (event) => {
@@ -1022,6 +1215,7 @@
       if (task) openStoryDialog(task);
     }
     if (action === 'delete-task') deleteTask(id);
+    if (action === 'add-task') openStoryDialog(null, id);
   });
 
   // Drag and drop of tickets within the board.
@@ -1085,6 +1279,7 @@
   });
 
   applyLanguage();
+  applyTheme();
   render();
   if (initialLoad.problem) reportLoadProblem(initialLoad.problem);
 })(window.Arbeitsboard = window.Arbeitsboard || {});

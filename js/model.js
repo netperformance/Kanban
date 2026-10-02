@@ -4,9 +4,12 @@
 
   const { sanitizeDescription } = ns.sanitize;
 
-  const SCHEMA_VERSION = 6;
+  const SCHEMA_VERSION = 8;
   const GENERAL_PROJECT_ID = 'general';
-  const LIMITS = Object.freeze({ taskTitle: 120, columnTitle: 48, projectTitle: 48, description: 10000, id: 200 });
+  const LIMITS = Object.freeze({ taskTitle: 120, columnTitle: 48, projectTitle: 48, description: 10000, id: 200, search: 100 });
+  // Colour scheme: light (default), dark, or following the operating system.
+  const THEMES = Object.freeze(['light', 'dark', 'system']);
+  const DEFAULT_THEME = 'light';
   const PRIORITY_KEYS = Object.freeze(['low', 'normal', 'high', 'critical']);
   // Entry types. The first one is the default.
   const TYPE_KEYS = Object.freeze(['task', 'story', 'bug', 'idea']);
@@ -24,6 +27,21 @@
 
   function isType(value) {
     return typeof value === 'string' && TYPE_KEYS.includes(value);
+  }
+
+  // A calendar date in the form YYYY-MM-DD that really exists (no 31 February).
+  function isDate(value) {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const [year, month, day] = value.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+  }
+
+  // Whole days from today (local time) until the date. Negative means overdue.
+  function daysUntil(value, today = new Date()) {
+    const [year, month, day] = value.split('-').map(Number);
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    return Math.round((new Date(year, month - 1, day) - start) / 86400000);
   }
 
   function colorForIndex(index) {
@@ -50,14 +68,16 @@
   }
 
   function defaultBoard() {
-    return { columns: DEFAULT_COLUMNS.map((column, index) => ({ ...column, color: colorForIndex(index) })), tasks: [], filter: { types: [] } };
+    return { columns: DEFAULT_COLUMNS.map((column, index) => ({ ...column, color: colorForIndex(index) })), tasks: [], filter: { types: [], search: '' } };
   }
 
-  // Type filter of a project. An empty list means "all types". A list with
-  // every type is the same as "all" and is stored as an empty list.
+  // Filter of a project: entry types and search text.
+  // An empty type list means "all types". A list with every type is the same
+  // as "all" and is stored as an empty list.
   function normalizeFilter(raw) {
     const types = raw && Array.isArray(raw.types) ? TYPE_KEYS.filter((type) => raw.types.includes(type)) : [];
-    return { types: types.length === TYPE_KEYS.length ? [] : types };
+    const search = raw && typeof raw.search === 'string' ? raw.search.slice(0, LIMITS.search) : '';
+    return { types: types.length === TYPE_KEYS.length ? [] : types, search };
   }
 
   function defaultState() {
@@ -65,6 +85,7 @@
       version: SCHEMA_VERSION,
       revision: 0,
       language: 'en',
+      theme: DEFAULT_THEME,
       activeProjectId: GENERAL_PROJECT_ID,
       projects: [{ id: GENERAL_PROJECT_ID, title: 'General', ...defaultBoard() }]
     };
@@ -159,7 +180,13 @@
       } else if (raw.type !== undefined) {
         report.repaired += 1;
       }
-      tasks.push({ id, type, title, description, priority, columnId });
+      let due = '';
+      if (isDate(raw.due)) {
+        due = raw.due;
+      } else if (raw.due !== undefined && raw.due !== '') {
+        report.repaired += 1;
+      }
+      tasks.push({ id, type, title, description, priority, due, columnId });
     });
     if (rawTasks !== undefined && !Array.isArray(rawTasks)) report.repaired += 1;
     return { columns, tasks };
@@ -209,6 +236,10 @@
     }
 
     const projectIds = new Set(projects.map((project) => project.id));
+    // Version 7 stored "system" as the default scheme. Since version 8 the default
+    // is "light", so a "system" from version 7 or older becomes "light".
+    const storedVersion = Number.isSafeInteger(candidate.version) ? candidate.version : 0;
+    const theme = THEMES.includes(candidate.theme) && !(candidate.theme === 'system' && storedVersion < 8) ? candidate.theme : DEFAULT_THEME;
     const revision = Number.isSafeInteger(candidate.revision) && candidate.revision >= 0 ? candidate.revision : 0;
     return {
       state: {
@@ -216,6 +247,7 @@
         revision,
         // English is the default language.
         language: candidate.language === 'de' ? 'de' : 'en',
+        theme,
         activeProjectId: projectIds.has(candidate.activeProjectId) ? candidate.activeProjectId : GENERAL_PROJECT_ID,
         projects
       },
@@ -228,7 +260,7 @@
   }
 
   ns.model = Object.freeze({
-    SCHEMA_VERSION, GENERAL_PROJECT_ID, LIMITS, PRIORITY_KEYS, TYPE_KEYS, DEFAULT_TYPE, COLUMN_COLORS, DEFAULT_COLUMNS,
-    isPriority, isType, colorForIndex, isColor, normalizeColor, nextColumnColor, createId, defaultBoard, defaultState, normalizeFilter, normalizeState, problemCount
+    SCHEMA_VERSION, GENERAL_PROJECT_ID, LIMITS, PRIORITY_KEYS, TYPE_KEYS, DEFAULT_TYPE, THEMES, DEFAULT_THEME, COLUMN_COLORS, DEFAULT_COLUMNS,
+    isPriority, isType, isDate, daysUntil, colorForIndex, isColor, normalizeColor, nextColumnColor, createId, defaultBoard, defaultState, normalizeFilter, normalizeState, problemCount
   });
 })(window.Arbeitsboard = window.Arbeitsboard || {});

@@ -169,16 +169,49 @@
   });
 
   test('Modell: Filter je Projekt wird geprüft, "alle Typen" wird als leere Liste gespeichert', () => {
-    equal(model.normalizeFilter(undefined), { types: [] });
-    equal(model.normalizeFilter({ types: ['bug', 'epic', 'bug', 'task'] }), { types: ['task', 'bug'] });
-    equal(model.normalizeFilter({ types: ['idea', 'bug', 'story', 'task'] }), { types: [] });
-    const result = model.normalizeState({ projects: [{ id: 'general', title: 'General', columns: [], tasks: [], filter: { types: ['bug'] } }] });
-    equal(result.state.projects[0].filter, { types: ['bug'] });
+    equal(model.normalizeFilter(undefined), { types: [], search: '' });
+    equal(model.normalizeFilter({ types: ['bug', 'epic', 'bug', 'task'] }), { types: ['task', 'bug'], search: '' });
+    equal(model.normalizeFilter({ types: ['idea', 'bug', 'story', 'task'] }), { types: [], search: '' });
+    equal(model.normalizeFilter({ search: 'x'.repeat(300) }).search.length, model.LIMITS.search);
+    equal(model.normalizeFilter({ search: 42 }).search, '');
+    const result = model.normalizeState({ projects: [{ id: 'general', title: 'General', columns: [], tasks: [], filter: { types: ['bug'], search: 'Login' } }] });
+    equal(result.state.projects[0].filter, { types: ['bug'], search: 'Login' });
+  });
+
+  test('Modell: Fälligkeitsdatum wird geprüft, ungültige Daten werden entfernt und gemeldet', () => {
+    assert(model.isDate('2026-10-02') && model.isDate('2028-02-29'));
+    assert(!model.isDate('2026-02-30') && !model.isDate('2026-13-01') && !model.isDate('02.10.2026') && !model.isDate(20261002));
+    const result = model.normalizeState(board([
+      { id: 'a', title: 'A', columnId: 'backlog', due: '2026-10-31' },
+      { id: 'b', title: 'B', columnId: 'backlog', due: 'morgen' },
+      { id: 'c', title: 'C', columnId: 'backlog' },
+      { id: 'd', title: 'D', columnId: 'backlog', due: '' }
+    ]));
+    equal(result.state.projects[0].tasks.map((task) => task.due), ['2026-10-31', '', '', '']);
+    equal(result.report.repaired, 1);
+  });
+
+  test('Modell: Tage bis zur Fälligkeit werden nach Kalendertagen gezählt', () => {
+    const today = new Date(2026, 9, 2, 23, 30);
+    equal(model.daysUntil('2026-10-02', today), 0);
+    equal(model.daysUntil('2026-10-03', today), 1);
+    equal(model.daysUntil('2026-10-01', today), -1);
+    equal(model.daysUntil('2026-11-02', today), 31);
+  });
+
+  test('Modell: Farbschema ist standardmäßig "Hell", unbekannte oder fehlende Werte werden zu "Hell"', () => {
+    equal(model.defaultState().theme, 'light');
+    equal(model.normalizeState(board([])).state.theme, 'light');
+    equal(model.normalizeState({ ...board([]), theme: 'dark' }).state.theme, 'dark');
+    equal(model.normalizeState({ ...board([]), version: 8, theme: 'system' }).state.theme, 'system');
+    equal(model.normalizeState({ ...board([]), version: 7, theme: 'system' }).state.theme, 'light');
+    equal(model.normalizeState({ ...board([]), version: 7, theme: 'dark' }).state.theme, 'dark');
+    equal(model.normalizeState({ ...board([]), theme: 'pink' }).state.theme, 'light');
   });
 
   test('Modell: unbekannte Felder werden nicht übernommen', () => {
     const result = model.normalizeState(board([{ id: 'a', title: 'T', columnId: 'backlog', extra: 'x', __proto__: { y: 1 } }]));
-    equal(Object.keys(result.state.projects[0].tasks[0]).sort(), ['columnId', 'description', 'id', 'priority', 'title', 'type']);
+    equal(Object.keys(result.state.projects[0].tasks[0]).sort(), ['columnId', 'description', 'due', 'id', 'priority', 'title', 'type']);
   });
 
   test('Modell: doppelte Spaltennamen werden eindeutig gemacht statt alles zu verwerfen', () => {
