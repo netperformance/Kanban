@@ -14,6 +14,7 @@
   const board = $('.board');
   const projectTabs = $('#project-tabs');
   const projectActions = $('#project-actions');
+  const filterBar = $('#filter-bar');
   const noticeArea = $('#notice-area');
   const importInput = $('#import-file');
   const settingsDialog = $('#settings-dialog');
@@ -26,6 +27,7 @@
   const storyDescriptionInput = $('#story-description');
   const editorToolbar = $('#editor-toolbar');
   const storyPriorityInput = $('#story-priority');
+  const storyTypeInput = $('#story-type');
   const storyProjectInput = $('#story-project');
   const storyDialogTitle = $('#story-dialog-title');
   const storyError = $('#story-error');
@@ -197,11 +199,14 @@
     return false;
   }
 
-  // Language and open project are view settings. They change on the screen
-  // even if they cannot be stored, so the board stays usable without storage.
-  function setView(changes) {
+  // Language, open project and the filters are view settings. They are
+  // stored like the board, but they change on the screen even if they cannot
+  // be stored, so the board stays usable without storage.
+  function setView(mutate) {
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const draft = { ...state, ...changes, revision: state.revision + 1 };
+      const draft = structuredClone(state);
+      mutate(draft);
+      draft.revision = state.revision + 1;
       const result = store.save(draft, state.revision);
       if (result.ok) {
         state = draft;
@@ -210,7 +215,38 @@
       if (result.reason !== 'conflict') break;
       reloadFromStorage();
     }
-    state = { ...state, ...changes };
+    const draft = structuredClone(state);
+    mutate(draft);
+    state = draft;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Type filter (stored per project)
+
+  function typeOf(task) {
+    return model.isType(task.type) ? task.type : model.DEFAULT_TYPE;
+  }
+
+  function filterTypes(project) {
+    return model.normalizeFilter(project.filter).types;
+  }
+
+  function isShown(task, types) {
+    return types.length === 0 || types.includes(typeOf(task));
+  }
+
+  function setFilter(projectId, types) {
+    setView((draft) => {
+      const project = findProject(draft, projectId);
+      if (project) project.filter = model.normalizeFilter({ types });
+    });
+    render();
+  }
+
+  // A new or changed entry must not disappear behind the filter right after saving.
+  function includeTypeInFilter(project, type) {
+    const types = filterTypes(project);
+    if (types.length > 0 && !types.includes(type)) project.filter = model.normalizeFilter({ types: [...types, type] });
   }
 
   // ---------------------------------------------------------------------------
@@ -232,6 +268,66 @@
     document.querySelectorAll('[data-language]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.language === state.language)));
   }
 
+  // Line icons for the entry types, drawn on a 24 by 24 grid.
+  const TYPE_ICONS = Object.freeze({
+    task: ['M7.5 3.5h9a4 4 0 0 1 4 4v9a4 4 0 0 1-4 4h-9a4 4 0 0 1-4-4v-9a4 4 0 0 1 4-4z', 'M8 12.5l3 3 5-6'],
+    story: ['M6.5 3.5h11v17l-5.5-3.8-5.5 3.8z'],
+    bug: ['M12 7c2.8 0 5 2.9 5 6.5S14.8 20 12 20s-5-2.9-5-6.5S9.2 7 12 7z', 'M12 7v13M7 11H3.5M7 16H3.5M17 11h3.5M17 16h3.5M9.5 6L7.5 4M14.5 6l2-2'],
+    idea: ['M9.5 18h5M10.5 21h3', 'M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.1v.1h5v-.1c0-.8.4-1.6 1.1-2.1A6 6 0 0 0 12 3z']
+  });
+  const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+
+  function createTypeLabel(type) {
+    const label = document.createElement('span');
+    label.className = `type-label type-${type}`;
+    label.append(createTypeIcon(type), document.createTextNode(t(`type.${type}`)));
+    return label;
+  }
+
+  function createTypeIcon(type) {
+    const icon = document.createElementNS(SVG_NAMESPACE, 'svg');
+    icon.setAttribute('class', 'type-icon');
+    icon.setAttribute('viewBox', '0 0 24 24');
+    icon.setAttribute('aria-hidden', 'true');
+    icon.setAttribute('focusable', 'false');
+    TYPE_ICONS[type].forEach((data) => {
+      const path = document.createElementNS(SVG_NAMESPACE, 'path');
+      path.setAttribute('d', data);
+      icon.append(path);
+    });
+    return icon;
+  }
+
+  function createFilterChip(value, text, count, pressed) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'filter-chip';
+    chip.dataset.filter = value;
+    chip.setAttribute('aria-pressed', String(pressed));
+    if (value !== 'all') chip.append(createTypeIcon(value));
+    const amount = document.createElement('span');
+    amount.className = 'filter-count';
+    amount.textContent = String(count);
+    chip.append(document.createTextNode(text), amount);
+    return chip;
+  }
+
+  function renderFilterBar(project) {
+    const types = filterTypes(project);
+    const children = [createFilterChip('all', t('filterAll'), project.tasks.length, types.length === 0)];
+    model.TYPE_KEYS.forEach((type) => {
+      const count = project.tasks.filter((task) => typeOf(task) === type).length;
+      children.push(createFilterChip(type, t(`type.${type}`), count, types.includes(type)));
+    });
+    // The number of shown entries is always visible, also when "All" is selected.
+    const status = document.createElement('p');
+    status.className = 'filter-status';
+    status.setAttribute('role', 'status');
+    status.textContent = tCount('filterStatus', project.tasks.length, { shown: project.tasks.filter((task) => isShown(task, types)).length, total: project.tasks.length });
+    children.push(status);
+    filterBar.replaceChildren(...children);
+  }
+
   function createButton(label, text, action, id, className = 'icon-button', disabled = false) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -247,11 +343,13 @@
 
   function createTicket(project, task) {
     const priority = model.isPriority(task.priority) ? task.priority : 'normal';
+    const type = model.isType(task.type) ? task.type : model.DEFAULT_TYPE;
     const ticket = document.createElement('article');
     ticket.className = `ticket ${priority === 'critical' ? 'is-critical' : ''}`.trim();
     ticket.draggable = true;
     ticket.dataset.taskId = task.id;
-    ticket.setAttribute('aria-label', t('taskPriority', { title: task.title, priority: t(`priority.${priority}`) }));
+    ticket.dataset.type = type;
+    ticket.setAttribute('aria-label', t('taskPriority', { type: t(`type.${type}`), title: task.title, priority: t(`priority.${priority}`) }));
 
     const main = document.createElement('div');
     main.className = 'ticket-main';
@@ -260,7 +358,7 @@
     const badge = document.createElement('span');
     badge.className = `priority-badge priority-${priority}`;
     badge.textContent = t(`priority.${priority}`);
-    meta.append(badge);
+    meta.append(createTypeLabel(type), badge);
     const heading = document.createElement('h3');
     heading.textContent = task.title;
     main.append(meta, heading);
@@ -310,7 +408,10 @@
     const count = document.createElement('span');
     count.className = 'count';
     const tasks = project.tasks.filter((task) => task.columnId === column.id);
-    count.textContent = String(tasks.length);
+    const types = filterTypes(project);
+    const shownTasks = tasks.filter((task) => isShown(task, types));
+    count.textContent = types.length > 0 ? `${shownTasks.length} / ${tasks.length}` : String(tasks.length);
+    count.classList.toggle('is-filtered', types.length > 0);
     headingGroup.append(heading, count);
     header.append(headingGroup);
 
@@ -318,13 +419,13 @@
     list.className = 'task-list';
     list.dataset.taskList = column.id;
     list.setAttribute('aria-label', t('ticketsLabel', { title: column.title }));
-    if (tasks.length === 0) {
+    if (shownTasks.length === 0) {
       const empty = document.createElement('p');
       empty.className = 'empty-state';
-      empty.textContent = t('emptyColumn');
+      empty.textContent = tasks.length === 0 ? t('emptyColumn') : tCount('emptyFiltered', tasks.length);
       list.append(empty);
     } else {
-      tasks.forEach((task) => list.append(createTicket(project, task)));
+      shownTasks.forEach((task) => list.append(createTicket(project, task)));
     }
 
     const footer = document.createElement('footer');
@@ -369,6 +470,7 @@
     }));
     board.setAttribute('aria-labelledby', `project-tab-${state.projects.indexOf(project)}`);
     projectActions.hidden = project.id === model.GENERAL_PROJECT_ID;
+    renderFilterBar(project);
     board.replaceChildren(...project.columns.map((column, index) => createColumn(project, column, index)));
   }
 
@@ -397,6 +499,7 @@
     storyDescriptionInput.innerHTML = task ? sanitizeDescription(task.description) : '';
     descriptionEditor.reset();
     storyPriorityInput.value = task && model.isPriority(task.priority) ? task.priority : 'normal';
+    storyTypeInput.value = task && model.isType(task.type) ? task.type : model.DEFAULT_TYPE;
     storyProjectInput.replaceChildren(...state.projects.map((item) => {
       const option = document.createElement('option');
       option.value = item.id;
@@ -537,7 +640,7 @@
   function activateProject(projectId, moveFocus = false) {
     if (!findProject(state, projectId)) return;
     if (projectId !== state.activeProjectId) {
-      setView({ activeProjectId: projectId });
+      setView((draft) => { draft.activeProjectId = projectId; });
       render();
     }
     if (moveFocus) {
@@ -723,6 +826,7 @@
       return;
     }
     const priority = model.isPriority(storyPriorityInput.value) ? storyPriorityInput.value : 'normal';
+    const type = model.isType(storyTypeInput.value) ? storyTypeInput.value : model.DEFAULT_TYPE;
     const taskId = storyIdInput.value;
     const sourceProjectId = storyDialog.dataset.sourceProjectId;
     const destinationProjectId = storyProjectInput.value;
@@ -739,13 +843,14 @@
     }
     const saved = commit((draft) => {
       const destination = findProject(draft, destinationProjectId);
+      includeTypeInFilter(destination, type);
       if (!taskId) {
-        destination.tasks.push({ id: model.createId(), title, description, priority, columnId: entryColumnId(destination) });
+        destination.tasks.push({ id: model.createId(), type, title, description, priority, columnId: entryColumnId(destination) });
         return;
       }
       const source = findProject(draft, sourceProjectId);
       const task = source.tasks.find((item) => item.id === taskId);
-      Object.assign(task, { title, description, priority });
+      Object.assign(task, { type, title, description, priority });
       if (destination.id !== source.id) {
         source.tasks = source.tasks.filter((item) => item.id !== taskId);
         task.columnId = entryColumnId(destination);
@@ -858,11 +963,26 @@
   document.querySelectorAll('[data-language]').forEach((button) => button.addEventListener('click', () => {
     const language = button.dataset.language;
     if (language === state.language || !ns.i18n.LANGUAGES.includes(language)) return;
-    setView({ language });
+    setView((draft) => { draft.language = language; });
     setSettingsStatus('info', '');
     applyLanguage();
     render();
   }));
+
+  filterBar.addEventListener('click', (event) => {
+    const chip = event.target.closest('[data-filter]');
+    if (!chip) return;
+    const project = getProject();
+    const value = chip.dataset.filter;
+    let types = [];
+    if (value !== 'all') {
+      const current = filterTypes(project);
+      types = current.includes(value) ? current.filter((type) => type !== value) : [...current, value];
+    }
+    setFilter(project.id, types);
+    const again = [...filterBar.querySelectorAll('[data-filter]')].find((item) => item.dataset.filter === value);
+    if (again) again.focus();
+  });
 
   projectTabs.addEventListener('click', (event) => {
     const tab = event.target.closest('[data-project-id]');

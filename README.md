@@ -11,17 +11,19 @@ The interface is available in English and German (German name: *Arbeitsboard*).
 ### Board
 
 - **Projects:** separate boards for different topics, shown as tabs. The project *General* always exists.
-- **Columns:** create, rename, recolour, reorder and delete. Tickets in a deleted column move to the neighbouring column.
-- **Done columns:** mark any column as done. The tab of each project shows how many open tickets it has.
-- **Tickets:** title, formatted description and one of four priorities (low, normal, high, critical). Critical tickets get a red frame.
-- **Drag and drop** to move tickets between and within columns, plus buttons to move them one column left or right.
-- **Move tickets between projects** from the edit dialog.
+- **Columns:** create, rename, recolour, reorder and delete. Entries in a deleted column move to the neighbouring column.
+- **Done columns:** mark any column as done. The tab of each project shows how many open entries it has.
+- **Entries:** title, formatted description and one of four priorities (low, normal, high, critical). Critical entries get a red frame.
+- **Entry types:** task (default), story, bug and idea. Each type has its own icon and label, while priorities use colour, so type and priority are never confused.
+- **Drag and drop** to move entries between and within columns, plus buttons to move them one column left or right.
+- **Move entries between projects** from the edit dialog.
+- **Filter by type:** show all entries, a single type or any combination, for example only bugs or bugs and tasks. Each project keeps its own filter, and the filter is remembered for the next visit. The filter bar always says how many entries are shown, and while a filter is active the column counters read "shown / total".
 
 ### Description editor
 
 - Bold, italic, bulleted lists and two text colours.
 - Keyboard shortcuts: <kbd>Ctrl</kbd>+<kbd>B</kbd> for bold, <kbd>Ctrl</kbd>+<kbd>I</kbd> for italic and <kbd>Ctrl</kbd>+<kbd>Z</kbd> to undo the last formatting step. On a Mac, use <kbd>Cmd</kbd> instead of <kbd>Ctrl</kbd>.
-- Pasted or dropped content is inserted as plain text, so no foreign formatting or code ends up in a ticket.
+- Pasted or dropped content is inserted as plain text, so no foreign formatting or code ends up in an entry.
 - Built on the standard Selection and Range APIs, without the deprecated `document.execCommand()`.
 
 ### Your data

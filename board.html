@@ -37,6 +37,8 @@
       </div>
     </nav>
 
+    <div class="filter-bar" id="filter-bar" role="group" data-i18n-aria-label="filterLabel" aria-label="Filter by type"></div>
+
     <section class="board" id="board" role="tabpanel"></section>
     <footer class="board-credit"><a href="https://aaron.de">aaron.de</a></footer>
   </main>
@@ -76,7 +78,7 @@
 
   <dialog id="story-dialog" aria-labelledby="story-dialog-title">
     <form class="dialog-form" id="story-form" novalidate>
-      <h2 class="dialog-heading" id="story-dialog-title">New story</h2>
+      <h2 class="dialog-heading" id="story-dialog-title">New entry</h2>
       <input id="task-id" type="hidden">
       <div class="field">
         <label for="story-title" data-i18n="titleLabel">Title</label>
@@ -97,14 +99,25 @@
         <label for="story-project" data-i18n="projectLabel">Project</label>
         <select id="story-project"></select>
       </div>
-      <div class="field">
-        <label for="story-priority" data-i18n="priorityLabel">Priority</label>
-        <select id="story-priority">
-          <option value="low" data-i18n="priority.low">Low</option>
-          <option value="normal" data-i18n="priority.normal" selected>Normal</option>
-          <option value="high" data-i18n="priority.high">High</option>
-          <option value="critical" data-i18n="priority.critical">Critical</option>
-        </select>
+      <div class="field-row">
+        <div class="field">
+          <label for="story-type" data-i18n="typeLabel">Type</label>
+          <select id="story-type">
+            <option value="task" data-i18n="type.task" selected>Task</option>
+            <option value="story" data-i18n="type.story">Story</option>
+            <option value="bug" data-i18n="type.bug">Bug</option>
+            <option value="idea" data-i18n="type.idea">Idea</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="story-priority" data-i18n="priorityLabel">Priority</label>
+          <select id="story-priority">
+            <option value="low" data-i18n="priority.low">Low</option>
+            <option value="normal" data-i18n="priority.normal" selected>Normal</option>
+            <option value="high" data-i18n="priority.high">High</option>
+            <option value="critical" data-i18n="priority.critical">Critical</option>
+          </select>
+        </div>
       </div>
       <p class="form-error" id="story-error" aria-live="polite"></p>
       <footer class="dialog-actions">
@@ -128,7 +141,7 @@
       </div>
       <div class="field checkbox-field">
         <input id="column-done" type="checkbox">
-        <label for="column-done" data-i18n="doneColumnLabel">Tickets in this column count as done</label>
+        <label for="column-done" data-i18n="doneColumnLabel">Entries in this column count as done</label>
       </div>
       <div class="field" id="column-position-row">
         <label for="column-position" data-i18n="positionLabel">Position</label>

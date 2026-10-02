@@ -152,9 +152,33 @@
     assert(!model.isPriority('toString') && !model.isPriority('__proto__') && model.isPriority('critical'));
   });
 
+  test('Modell: Einträge ohne Typ werden zu Aufgaben, ohne als Fehler zu gelten', () => {
+    const result = model.normalizeState(board([{ id: 'a', title: 'Alt', columnId: 'backlog' }]));
+    equal(result.state.projects[0].tasks[0].type, 'task');
+    equal(result.report, { repaired: 0, skipped: 0 });
+  });
+
+  test('Modell: gültige Typen bleiben, unbekannte werden zu Aufgaben und gemeldet', () => {
+    const result = model.normalizeState(board([
+      { id: 'a', title: 'A', columnId: 'backlog', type: 'bug' },
+      { id: 'b', title: 'B', columnId: 'backlog', type: 'epic' },
+      { id: 'c', title: 'C', columnId: 'backlog', type: 'constructor' }
+    ]));
+    equal(result.state.projects[0].tasks.map((task) => task.type), ['bug', 'task', 'task']);
+    equal(result.report.repaired, 2);
+  });
+
+  test('Modell: Filter je Projekt wird geprüft, "alle Typen" wird als leere Liste gespeichert', () => {
+    equal(model.normalizeFilter(undefined), { types: [] });
+    equal(model.normalizeFilter({ types: ['bug', 'epic', 'bug', 'task'] }), { types: ['task', 'bug'] });
+    equal(model.normalizeFilter({ types: ['idea', 'bug', 'story', 'task'] }), { types: [] });
+    const result = model.normalizeState({ projects: [{ id: 'general', title: 'General', columns: [], tasks: [], filter: { types: ['bug'] } }] });
+    equal(result.state.projects[0].filter, { types: ['bug'] });
+  });
+
   test('Modell: unbekannte Felder werden nicht übernommen', () => {
     const result = model.normalizeState(board([{ id: 'a', title: 'T', columnId: 'backlog', extra: 'x', __proto__: { y: 1 } }]));
-    equal(Object.keys(result.state.projects[0].tasks[0]).sort(), ['columnId', 'description', 'id', 'priority', 'title']);
+    equal(Object.keys(result.state.projects[0].tasks[0]).sort(), ['columnId', 'description', 'id', 'priority', 'title', 'type']);
   });
 
   test('Modell: doppelte Spaltennamen werden eindeutig gemacht statt alles zu verwerfen', () => {

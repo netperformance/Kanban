@@ -24,6 +24,9 @@ npm-debug.log*
 *.swp
 *~
 
+# Ablage der Claude Desktop App (Entwürfe, Skizzen)
+Claude outputs/
+
 # Betriebssystem
 Thumbs.db
 desktop.ini

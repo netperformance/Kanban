@@ -4,10 +4,13 @@
 
   const { sanitizeDescription } = ns.sanitize;
 
-  const SCHEMA_VERSION = 5;
+  const SCHEMA_VERSION = 6;
   const GENERAL_PROJECT_ID = 'general';
   const LIMITS = Object.freeze({ taskTitle: 120, columnTitle: 48, projectTitle: 48, description: 10000, id: 200 });
   const PRIORITY_KEYS = Object.freeze(['low', 'normal', 'high', 'critical']);
+  // Entry types. The first one is the default.
+  const TYPE_KEYS = Object.freeze(['task', 'story', 'bug', 'idea']);
+  const DEFAULT_TYPE = TYPE_KEYS[0];
   const COLUMN_COLORS = Object.freeze(['#d95d45', '#c58b12', '#34835b', '#176b87', '#b34d79', '#6e7e24']);
   const DEFAULT_COLUMNS = Object.freeze([
     Object.freeze({ id: 'backlog', title: 'Backlog', done: false }),
@@ -17,6 +20,10 @@
 
   function isPriority(value) {
     return typeof value === 'string' && PRIORITY_KEYS.includes(value);
+  }
+
+  function isType(value) {
+    return typeof value === 'string' && TYPE_KEYS.includes(value);
   }
 
   function colorForIndex(index) {
@@ -43,7 +50,14 @@
   }
 
   function defaultBoard() {
-    return { columns: DEFAULT_COLUMNS.map((column, index) => ({ ...column, color: colorForIndex(index) })), tasks: [] };
+    return { columns: DEFAULT_COLUMNS.map((column, index) => ({ ...column, color: colorForIndex(index) })), tasks: [], filter: { types: [] } };
+  }
+
+  // Type filter of a project. An empty list means "all types". A list with
+  // every type is the same as "all" and is stored as an empty list.
+  function normalizeFilter(raw) {
+    const types = raw && Array.isArray(raw.types) ? TYPE_KEYS.filter((type) => raw.types.includes(type)) : [];
+    return { types: types.length === TYPE_KEYS.length ? [] : types };
   }
 
   function defaultState() {
@@ -138,7 +152,14 @@
       } else if (raw.priority !== undefined) {
         report.repaired += 1;
       }
-      tasks.push({ id, title, description, priority, columnId });
+      // Entries from before version 6 have no type and become tasks.
+      let type = DEFAULT_TYPE;
+      if (isType(raw.type)) {
+        type = raw.type;
+      } else if (raw.type !== undefined) {
+        report.repaired += 1;
+      }
+      tasks.push({ id, type, title, description, priority, columnId });
     });
     if (rawTasks !== undefined && !Array.isArray(rawTasks)) report.repaired += 1;
     return { columns, tasks };
@@ -164,12 +185,17 @@
           return;
         }
         projectIds.add(id);
-        projects.push({ id, title: uniqueTitle(title, projectTitles, LIMITS.projectTitle, report), ...normalizeBoard(raw.columns, raw.tasks, report) });
+        projects.push({
+          id,
+          title: uniqueTitle(title, projectTitles, LIMITS.projectTitle, report),
+          ...normalizeBoard(raw.columns, raw.tasks, report),
+          filter: normalizeFilter(raw.filter)
+        });
       });
     } else if (Array.isArray(candidate.tasks)) {
       // Format before projects existed (version 1 to 3): one board without projects.
       const columns = candidate.version === 1 ? DEFAULT_COLUMNS : candidate.columns;
-      projects.push({ id: GENERAL_PROJECT_ID, title: 'General', ...normalizeBoard(columns, candidate.tasks, report) });
+      projects.push({ id: GENERAL_PROJECT_ID, title: 'General', ...normalizeBoard(columns, candidate.tasks, report), filter: normalizeFilter(null) });
     } else {
       return null;
     }
@@ -202,7 +228,7 @@
   }
 
   ns.model = Object.freeze({
-    SCHEMA_VERSION, GENERAL_PROJECT_ID, LIMITS, PRIORITY_KEYS, COLUMN_COLORS, DEFAULT_COLUMNS,
-    isPriority, colorForIndex, isColor, normalizeColor, nextColumnColor, createId, defaultBoard, defaultState, normalizeState, problemCount
+    SCHEMA_VERSION, GENERAL_PROJECT_ID, LIMITS, PRIORITY_KEYS, TYPE_KEYS, DEFAULT_TYPE, COLUMN_COLORS, DEFAULT_COLUMNS,
+    isPriority, isType, colorForIndex, isColor, normalizeColor, nextColumnColor, createId, defaultBoard, defaultState, normalizeFilter, normalizeState, problemCount
   });
 })(window.Arbeitsboard = window.Arbeitsboard || {});

@@ -71,6 +71,12 @@ test('Neues Board startet auf Englisch', async ({ page }) => {
   await expect(page.locator('#create-story')).toHaveText('+ New entry');
   await expect(page.locator('#open-settings')).toHaveText('Settings');
   await expect(page.locator('.project-tab')).toHaveText('General (0)');
+  await expect(page.locator('.empty-state').first()).toHaveText('No entries in this column.');
+  await expect(page.locator('.filter-status')).toHaveText('No entries yet');
+  await createStory(page, 'Erster');
+  await expect(page.locator('.filter-status')).toHaveText('1 of 1 entry shown');
+  // Entries are called entries; "Story" only appears as the name of a type.
+  expect(await page.locator('body').innerText()).not.toMatch(/stories|new story|edit story/i);
   await page.click('#create-story');
   await expect(page.locator('#story-description')).toHaveAttribute('data-placeholder', 'Enter a description');
 });
@@ -259,6 +265,103 @@ test('Zu lange Beschreibung wird abgelehnt statt abgeschnitten', async ({ page }
   await page.click('#story-form button[type=submit]');
   await expect(page.locator('#story-error')).toContainText('10.001 von höchstens 10.000');
   await expect(page.locator('.ticket')).toHaveCount(0);
+});
+
+test('Eintragstyp: Standard ist Aufgabe, Typ wird mit Symbol angezeigt und lässt sich ändern', async ({ page }) => {
+  await openBoard(page);
+  await page.click('#create-story');
+  await expect(page.locator('#story-type')).toHaveValue('task');
+  await page.fill('#story-title', 'Link kaputt');
+  await page.selectOption('#story-type', 'bug');
+  await page.click('#story-form button[type=submit]');
+  const ticket = page.locator('.ticket').first();
+  await expect(ticket.locator('.type-label')).toHaveText('Bug');
+  await expect(ticket.locator('.type-label svg path')).not.toHaveCount(0);
+  await expect(ticket).toHaveAttribute('aria-label', 'Bug: Link kaputt, priority Normal');
+  expect((await stored(page)).projects[0].tasks[0].type).toBe('bug');
+
+  await ticket.locator('[data-action=edit-task]').click();
+  await expect(page.locator('#story-type')).toHaveValue('bug');
+  await page.selectOption('#story-type', 'idea');
+  await page.click('#story-form button[type=submit]');
+  await expect(ticket.locator('.type-label')).toHaveText('Idea');
+
+  await openSettings(page);
+  await page.click('[data-language=de]');
+  await page.click('#close-settings');
+  await expect(ticket.locator('.type-label')).toHaveText('Idee');
+});
+
+test('Eintragstyp: ältere Einträge ohne Typ erscheinen als Aufgabe ohne Fehlermeldung', async ({ page }) => {
+  await openBoard(page, boardState([{ id: 'a', title: 'Alt', description: '', columnId: 'backlog' }]));
+  await expect(page.locator('.type-label')).toHaveText('Aufgabe');
+  await expect(page.locator('.notice')).toHaveCount(0);
+});
+
+function filterBoard() {
+  const T = (id, type, columnId) => ({ id, type, title: `${type} ${id}`, description: '', priority: 'normal', columnId });
+  return boardState([T('1', 'bug', 'backlog'), T('2', 'task', 'backlog'), T('3', 'bug', 'done'), T('4', 'idea', 'backlog'), T('5', 'story', 'done'), T('6', 'task', 'done')]);
+}
+
+const chip = (page, value) => page.locator(`.filter-chip[data-filter=${value}]`);
+
+test('Filter: "Alle" vorne, kein Wort davor, Typen einzeln und kombiniert', async ({ page }) => {
+  await openBoard(page, { ...filterBoard(), language: 'en' });
+  await expect(page.locator('#filter-bar')).not.toContainText('Show');
+  await expect(page.locator('.filter-chip').first()).toHaveText('All6');
+  await expect(chip(page, 'all')).toHaveAttribute('aria-pressed', 'true');
+  await expect(chip(page, 'bug')).toHaveText('Bug2');
+  await expect(page.locator('.filter-status')).toHaveText('6 of 6 entries shown');
+
+  await chip(page, 'bug').click();
+  await expect(chip(page, 'all')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.ticket')).toHaveCount(2);
+  await expect(page.locator('.filter-status')).toHaveText('2 of 6 entries shown');
+  await expect(page.locator('.column').first().locator('.count')).toHaveText('1 / 3');
+
+  await chip(page, 'task').click();
+  await expect(page.locator('.ticket')).toHaveCount(4);
+  await chip(page, 'task').click();
+  await chip(page, 'bug').click();
+  await expect(chip(page, 'all')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.ticket')).toHaveCount(6);
+  await expect(page.locator('.filter-status')).toHaveText('6 of 6 entries shown');
+
+  await chip(page, 'idea').click();
+  await expect(page.locator('.column').nth(1).locator('.empty-state')).toHaveText('No matching entries. 3 are hidden by the filter.');
+  await chip(page, 'all').click();
+  await expect(page.locator('.ticket')).toHaveCount(6);
+
+  for (const type of ['task', 'story', 'bug', 'idea']) await chip(page, type).click();
+  await expect(chip(page, 'all')).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('Filter: wird je Projekt gespeichert und bleibt nach dem Neuladen erhalten', async ({ page }) => {
+  await openBoard(page, filterBoard());
+  await page.click('#create-project');
+  await page.fill('#project-title', 'Zweites');
+  await page.click('#project-form button[type=submit]');
+  await chip(page, 'idea').click();
+  await page.locator('.project-tab').first().click();
+  await chip(page, 'bug').click();
+  await page.reload();
+  await expect(chip(page, 'bug')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.ticket')).toHaveCount(2);
+  await expect(chip(page, 'all')).toHaveText('Alle6');
+  await page.locator('.project-tab').nth(1).click();
+  await expect(chip(page, 'idea')).toHaveAttribute('aria-pressed', 'true');
+  await expect(chip(page, 'bug')).toHaveAttribute('aria-pressed', 'false');
+  const data = await stored(page);
+  expect(data.projects.map((project) => project.filter.types)).toEqual([['bug'], ['idea']]);
+});
+
+test('Filter: neuer Eintrag eines ausgeblendeten Typs bleibt sichtbar', async ({ page }) => {
+  await openBoard(page, filterBoard());
+  await chip(page, 'bug').click();
+  await createStory(page, 'Neue Aufgabe');
+  await expect(page.locator('.ticket h3', { hasText: 'Neue Aufgabe' })).toBeVisible();
+  await expect(chip(page, 'task')).toHaveAttribute('aria-pressed', 'true');
+  await expect(chip(page, 'bug')).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('Neuer Eintrag: geöffnetes Projekt ist vorausgewählt und wird verwendet', async ({ page }) => {
