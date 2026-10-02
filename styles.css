@@ -197,8 +197,14 @@ h1 { min-width: 0; margin-bottom: 0; overflow-wrap: anywhere; font-family: Georg
 .filter-groups { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; }
 .search-field { position: relative; display: flex; align-items: center; flex: 0 1 260px; min-width: 180px; }
 .search-icon { position: absolute; left: 11px; width: 17px; height: 17px; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; pointer-events: none; }
-.search-field input { width: 100%; min-height: 36px; padding: 6px 10px 6px 35px; color: var(--ink); border: 1px solid var(--control-border); border-radius: 999px; background: var(--field); }
+.search-field input { width: 100%; min-height: 36px; padding: 6px 36px 6px 35px; color: var(--ink); border: 1px solid var(--control-border); border-radius: 999px; background: var(--field); }
 .search-field input::placeholder { color: var(--placeholder); }
+/* Own clear button instead of the browser's, so it looks the same in every browser. */
+.search-field input::-webkit-search-cancel-button { display: none; -webkit-appearance: none; }
+.search-clear { position: absolute; right: 6px; display: grid; width: 26px; height: 26px; padding: 0; place-items: center; color: var(--muted); border: 0; border-radius: 50%; background: transparent; }
+.search-clear:hover { color: var(--ink); background: var(--button-hover); }
+.search-clear[hidden] { display: none; }
+.search-clear svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 .filter-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .filter-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 5px 12px; color: var(--text-3); border: 1px solid var(--control-border); border-radius: 999px; background: var(--control); font-size: 0.82rem; font-weight: 700; }
 .filter-chip:hover { background: var(--control-hover); }

@@ -21,6 +21,7 @@
   const dueChips = $('#due-chips');
   const filterStatus = $('#filter-status');
   const searchInput = $('#search-input');
+  const searchClear = $('#search-clear');
   const noticeArea = $('#notice-area');
   const importInput = $('#import-file');
   const settingsDialog = $('#settings-dialog');
@@ -500,6 +501,7 @@
     filterStatus.textContent = tCount('filterStatus', project.tasks.length, { shown, total: project.tasks.length });
     // While the user types, the field keeps what is typed.
     if (document.activeElement !== searchInput && searchInput.value !== filter.search) searchInput.value = filter.search;
+    searchClear.hidden = searchInput.value === '';
   }
 
   function createButton(label, text, action, id, className = 'icon-button', disabled = false) {
@@ -1349,6 +1351,12 @@
         if (target) target.filter = model.normalizeFilter({ ...target.filter, search });
       });
     }, 400);
+  });
+
+  searchClear.addEventListener('click', () => {
+    searchInput.value = '';
+    searchInput.dispatchEvent(new Event('input'));
+    searchInput.focus();
   });
 
   searchInput.addEventListener('keydown', (event) => {

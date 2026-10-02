@@ -848,3 +848,16 @@ test('Fällig-Filter: zeigt überfällige, heute und morgen fällige Einträge, 
   await expect(page.locator('.due-chip')).toHaveAttribute('aria-pressed', 'false');
   await expect(page.locator('.ticket')).toHaveCount(7);
 });
+
+test('Suche: das X im Suchfeld leert die Suche und erscheint nur mit Inhalt', async ({ page }) => {
+  await openBoard(page, searchBoard());
+  await expect(page.locator('#search-clear')).toBeHidden();
+  await page.fill('#search-input', 'login');
+  await expect(page.locator('.ticket')).toHaveCount(2);
+  await expect(page.locator('#search-clear')).toBeVisible();
+  await page.click('#search-clear');
+  await expect(page.locator('#search-input')).toHaveValue('');
+  await expect(page.locator('#search-input')).toBeFocused();
+  await expect(page.locator('.ticket')).toHaveCount(4);
+  await expect(page.locator('#search-clear')).toBeHidden();
+});
