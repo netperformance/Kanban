@@ -22,7 +22,7 @@ The interface is available in English and German (German name: *Arbeitsboard*).
 - **Touch screens:** on tablets and phones, press and hold an entry for a moment, then drag it with your finger. The page scrolls along at the top and bottom edge. A short swipe still scrolls as usual.
 - **Quick add:** every column has a **+** button that creates an entry directly in that column.
 - **Move entries between projects and columns** from the edit dialog.
-- **Search** in titles and descriptions. Several words narrow the result; press <kbd>/</kbd> to jump to the search field and <kbd>Esc</kbd> to clear it.
+- **Search** in titles and descriptions. Several words narrow the result; press <kbd>/</kbd> to jump to the search field, and clear it with the **✕** in the field or <kbd>Esc</kbd>.
 - **Filter by type and priority:** show all entries, a single type or priority, or any combination, for example only critical bugs. The priority buttons carry the colours of the priority labels. A **Due** button shows only entries that are overdue or due today or tomorrow; its number turns red as soon as something is overdue. *All* resets type, priority and due filter. Search and filter work together. Each project keeps its own search and filter, and both are remembered for the next visit. The filter bar always says how many entries are shown, and while a filter is active the column counters read "shown / total".
 
 ### Description editor
@@ -56,7 +56,7 @@ The interface is available in English and German (German name: *Arbeitsboard*).
 
 ### Accessibility
 
-- All functions work with the keyboard. Project tabs support the arrow keys, <kbd>Home</kbd> and <kbd>End</kbd>.
+- Almost everything works with the keyboard: entries open with <kbd>Enter</kbd> on their title, move to another column with the arrow buttons, and project tabs support the arrow keys, <kbd>Home</kbd> and <kbd>End</kbd>. Changing the order within a column needs a mouse or a finger.
 - <kbd>Esc</kbd> closes every dialog.
 - Buttons and regions have accessible labels; reduced motion settings are respected.
 
