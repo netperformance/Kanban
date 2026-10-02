@@ -641,6 +641,7 @@
     columnActions.className = 'column-actions';
     columnActions.append(
       createButton(t('editColumn'), t('edit'), 'edit-column', column.id, 'ticket-text-button'),
+      createButton(t('clearColumnLabel', { title: column.title }), t('clearColumn'), 'clear-column', column.id, 'ticket-text-button delete-button', tasks.length === 0),
       createButton(t('deleteColumnConfirm', { title: column.title }), t('delete'), 'delete-column', column.id, 'ticket-text-button delete-button', project.columns.length === 1)
     );
     footer.append(orderActions, columnActions);
@@ -891,6 +892,20 @@
     if (!target) return;
     commit((draft) => {
       findProject(draft, project.id).tasks.find((item) => item.id === taskId).columnId = target.id;
+    });
+  }
+
+  // Deletes every entry of a column, also entries hidden by the filter.
+  // Works the same for every column; the column itself stays.
+  function clearColumn(columnId) {
+    const project = getProject();
+    const column = project.columns.find((item) => item.id === columnId);
+    const count = project.tasks.filter((task) => task.columnId === columnId).length;
+    if (!column || count === 0) return;
+    if (!confirm(tCount('clearColumnConfirm', count, { title: column.title }))) return;
+    commit((draft) => {
+      const draftProject = findProject(draft, project.id);
+      draftProject.tasks = draftProject.tasks.filter((task) => task.columnId !== columnId);
     });
   }
 
@@ -1419,6 +1434,7 @@
       if (column) openColumnDialog(column);
     }
     if (action === 'delete-column') deleteColumn(id);
+    if (action === 'clear-column') clearColumn(id);
     if (action === 'move-task-left') moveTask(id, -1);
     if (action === 'move-task-right') moveTask(id, 1);
     if (action === 'edit-task') {

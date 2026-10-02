@@ -280,7 +280,13 @@ h1 { min-width: 0; margin-bottom: 0; overflow-wrap: anywhere; font-family: Georg
 .ticket-actions { justify-content: space-between; padding: 8px 9px; border-top: 1px solid var(--divider); background: var(--surface-2); }
 .icon-button { display: inline-grid; width: 30px; height: 30px; padding: 0; place-items: center; color: var(--text-3); border: 1px solid var(--button-border); background: var(--surface); font-size: 1rem; }
 .icon-button:hover, .ticket-text-button:hover { background: var(--button-hover); }
-.icon-button:disabled { cursor: not-allowed; opacity: 0.38; }
+.icon-button:disabled, .ticket-text-button:disabled { cursor: not-allowed; opacity: 0.38; }
+.ticket-text-button:disabled:hover { color: var(--text-3); border-color: var(--button-border); background: var(--surface); }
+.column-footer { padding: 9px 7px; }
+.column-footer .ticket-text-button { padding: 4px 5px; font-size: 0.74rem; }
+.column-footer .move-actions { gap: 3px; }
+.column-footer { flex-wrap: wrap; }
+.column-footer .column-actions { flex-wrap: nowrap; gap: 3px; margin-left: auto; }
 .ticket-text-button { min-height: 30px; padding: 4px 8px; color: var(--text-3); border: 1px solid var(--button-border); background: var(--surface); font-size: 0.76rem; }
 .delete-button:hover { color: var(--danger); border-color: var(--danger-border); background: var(--danger-soft); }
 

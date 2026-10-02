@@ -861,3 +861,28 @@ test('Suche: das X im Suchfeld leert die Suche und erscheint nur mit Inhalt', as
   await expect(page.locator('.ticket')).toHaveCount(4);
   await expect(page.locator('#search-clear')).toBeHidden();
 });
+
+// --- Spalte leeren -------------------------------------------------------------
+
+test('Spalte leeren: jede Spalte, nach Rückfrage, auch ausgefilterte Einträge, andere Spalten bleiben', async ({ page }) => {
+  page.removeAllListeners('dialog');
+  const T = (id, columnId, type = 'task') => ({ id, type, title: `T${id}`, description: '', columnId });
+  await openBoard(page, { ...boardState([T('1', 'backlog'), T('2', 'done'), T('3', 'done', 'bug'), T('4', 'done')]), language: 'en' });
+  const clear = (column) => page.locator(`[data-action=clear-column][data-id=${column}]`);
+  await page.click('[data-action=edit-column][data-id=done]');
+  await page.fill('#column-title', 'Fertig');
+  await page.click('#column-form button[type=submit]');
+  await chip(page, 'bug').click();
+
+  let message = '';
+  page.once('dialog', (dialog) => { message = dialog.message(); dialog.dismiss(); });
+  await clear('done').click();
+  expect(message).toBe('Permanently delete all 3 entries in column "Fertig"?');
+  expect((await stored(page)).projects[0].tasks).toHaveLength(4);
+
+  page.once('dialog', (dialog) => dialog.accept());
+  await clear('done').click();
+  await expect.poll(async () => (await stored(page)).projects[0].tasks.map((task) => task.id)).toEqual(['1']);
+  await expect(clear('done')).toBeDisabled();
+  await expect(clear('backlog')).toBeEnabled();
+});

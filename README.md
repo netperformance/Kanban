@@ -11,7 +11,7 @@ The interface is available in English and German (German name: *Arbeitsboard*).
 ### Board
 
 - **Projects:** separate boards for different topics, shown as tabs. The project *General* always exists.
-- **Columns:** create, rename, recolour, reorder and delete. Entries in a deleted column move to the neighbouring column.
+- **Columns:** create, rename, recolour, reorder and delete. Entries in a deleted column move to the neighbouring column. Every column can also be cleared: after one confirmation, all its entries are deleted.
 - **Done columns:** mark any column as done. The tab of each project shows how many open entries it has.
 - **Entries:** title, formatted description and one of four priorities (low, normal, high, critical). Critical entries get a red frame.
 - **Due dates:** entries due today or tomorrow are highlighted, overdue entries are marked in red. Entries in a done column are no longer highlighted.
