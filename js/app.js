@@ -27,6 +27,7 @@
   const closeSettingsButton = $('#close-settings');
   const boardNameInput = $('#board-name-input');
   const settingsVersion = $('#settings-version');
+  const viewDialog = $('#view-dialog');
   const storyDialog = $('#story-dialog');
   const storyForm = $('#story-form');
   const storyIdInput = $('#task-id');
@@ -513,7 +514,16 @@
     }
     metaEnd.append(badge);
     meta.append(createTypeLabel(type), metaEnd);
+    // Only the title opens the entry. The rest of the card stays free for dragging.
+    // The title is the heading itself, not a button inside it: a button inside a
+    // draggable card does not receive clicks reliably in every browser.
     const heading = document.createElement('h3');
+    heading.className = 'ticket-title';
+    heading.dataset.action = 'view-task';
+    heading.dataset.id = task.id;
+    heading.tabIndex = 0;
+    heading.setAttribute('role', 'button');
+    heading.title = t('openEntry');
     heading.textContent = task.title;
     main.append(meta, heading);
     if (task.description) {
@@ -639,7 +649,67 @@
       const end = meta.querySelector('.ticket-meta-end');
       if (end && end.offsetTop > meta.firstElementChild.offsetTop) meta.classList.add('is-compact');
     });
+    // A description that does not fit fades out at the bottom, so it is clear there is more.
+    board.querySelectorAll('.ticket-description').forEach((description) => {
+      description.classList.toggle('is-truncated', description.scrollHeight > description.clientHeight + 1);
+    });
   }
+
+  // ---------------------------------------------------------------------------
+  // Read view of an entry
+
+  function openViewDialog(task) {
+    const project = getProject();
+    const column = project.columns.find((item) => item.id === task.columnId);
+    const priority = priorityOf(task);
+    const due = dueInfo(project, task);
+    const end = document.createElement('div');
+    end.className = 'ticket-meta-end';
+    if (due) {
+      const dueLabel = document.createElement('span');
+      dueLabel.className = `ticket-due ${due.state}`.trim();
+      const icon = createIcon('calendar');
+      icon.setAttribute('class', 'type-icon');
+      dueLabel.append(icon, document.createTextNode(due.text));
+      end.append(dueLabel);
+    }
+    const badge = document.createElement('span');
+    badge.className = `priority-badge priority-${priority}`;
+    badge.textContent = t(`priority.${priority}`);
+    end.append(badge);
+    $('#view-meta').replaceChildren(createTypeLabel(typeOf(task)), end);
+    $('#view-title').textContent = task.title;
+    $('#view-location').textContent = t('entryLocation', { project: projectTitle(project), column: column ? column.title : '' });
+    const description = $('#view-description');
+    if (task.description) {
+      description.innerHTML = sanitizeDescription(task.description);
+      description.classList.remove('is-empty');
+    } else {
+      description.textContent = t('noDescription');
+      description.classList.add('is-empty');
+    }
+    viewDialog.dataset.taskId = task.id;
+    showDialog(viewDialog, $('#view-close'));
+  }
+
+  // Browsers send no click after a real drag. As an extra safety, a click right
+  // after the end of a drag is ignored as well.
+  let lastDragEnd = 0;
+  function isDeliberateTitleClick() {
+    return Date.now() - lastDragEnd > 300;
+  }
+
+  function openTaskFromTitle(title) {
+    const task = getProject().tasks.find((item) => item.id === title.dataset.id);
+    if (task) openViewDialog(task);
+  }
+
+  board.addEventListener('keydown', (event) => {
+    const title = event.target.closest('.ticket-title');
+    if (!title || (event.key !== 'Enter' && event.key !== ' ')) return;
+    event.preventDefault();
+    openTaskFromTitle(title);
+  });
 
   let compactFrame = 0;
   new ResizeObserver(() => {
@@ -1142,6 +1212,12 @@
   // Event wiring
 
   $('#create-story').addEventListener('click', () => openStoryDialog());
+  $('#view-close').addEventListener('click', () => closeDialog(viewDialog));
+  $('#view-edit').addEventListener('click', () => {
+    const task = getProject().tasks.find((item) => item.id === viewDialog.dataset.taskId);
+    closeDialog(viewDialog);
+    if (task) openStoryDialog(task);
+  });
   $('#cancel-story').addEventListener('click', () => closeDialog(storyDialog));
   $('#create-project').addEventListener('click', () => openProjectDialog());
   $('#cancel-project').addEventListener('click', () => closeDialog(projectDialog));
@@ -1272,7 +1348,7 @@
   });
 
   board.addEventListener('click', (event) => {
-    const button = event.target.closest('button[data-action]');
+    const button = event.target.closest('[data-action]');
     if (!button) return;
     const project = getProject();
     const { action, id } = button.dataset;
@@ -1289,6 +1365,7 @@
       const task = project.tasks.find((item) => item.id === id);
       if (task) openStoryDialog(task);
     }
+    if (action === 'view-task' && isDeliberateTitleClick()) openTaskFromTitle(button);
     if (action === 'delete-task') deleteTask(id);
     if (action === 'add-task') openStoryDialog(null, id);
   });
@@ -1320,6 +1397,7 @@
     document.querySelectorAll('.task-list.is-drag-over').forEach((list) => list.classList.remove('is-drag-over'));
     clearDropIndicators();
     draggedTaskId = null;
+    lastDragEnd = Date.now();
   });
 
   board.addEventListener('dragover', (event) => {

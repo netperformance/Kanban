@@ -787,3 +787,40 @@ test('Boardname: gilt für beide Sprachen, bleibt nach dem Neuladen, leer ergibt
   await page.click('#close-settings');
   await expect.poll(async () => (await stored(page)).boardName).toBe('');
 });
+
+// --- Eintrag ansehen ----------------------------------------------------------
+
+test('Ansehen: Klick auf den Titel zeigt den ganzen Eintrag, von dort geht es zum Bearbeiten', async ({ page }) => {
+  const long = `<b>Anfang</b> ${'viel Text '.repeat(80)}<i>Ende</i>`;
+  await openBoard(page, { ...boardState([{ id: 'a', type: 'bug', title: 'Langer Eintrag', description: long, priority: 'high', columnId: 'backlog', due: '2030-01-15' }]), language: 'en' });
+  await expect(page.locator('.ticket-description')).toHaveClass(/is-truncated/);
+  await page.click('.ticket-title');
+  await expect(page.locator('#view-dialog')).toHaveJSProperty('open', true);
+  await expect(page.locator('#view-title')).toHaveText('Langer Eintrag');
+  await expect(page.locator('#view-location')).toHaveText('General · Backlog');
+  await expect(page.locator('#view-meta .type-label')).toHaveText('Bug');
+  await expect(page.locator('#view-meta .ticket-due')).toHaveText('Due 15 Jan 2030');
+  await expect(page.locator('#view-description i')).toHaveText('Ende');
+  await page.click('#view-edit');
+  await expect(page.locator('#view-dialog')).toHaveJSProperty('open', false);
+  await expect(page.locator('#story-dialog')).toHaveJSProperty('open', true);
+  await expect(page.locator('#story-title')).toHaveValue('Langer Eintrag');
+  await page.keyboard.press('Escape');
+  await page.focus('.ticket-title');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#view-dialog')).toHaveJSProperty('open', true);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#view-dialog')).toHaveJSProperty('open', false);
+});
+
+test('Ansehen: Klick auf die übrige Karte und ein abgebrochener Zug am Titel öffnen nichts', async ({ page }) => {
+  await openBoard(page, boardState([{ id: 'a', title: 'Ziehen', description: 'Text', columnId: 'backlog' }]));
+  await page.click('.ticket-description');
+  await page.click('.ticket-meta');
+  const title = await page.locator('.ticket-title').boundingBox();
+  await page.mouse.move(title.x + 5, title.y + 5);
+  await page.mouse.down();
+  await page.mouse.move(title.x + 25, title.y + 5);
+  await page.mouse.up();
+  await expect(page.locator('dialog[open]')).toHaveCount(0);
+});

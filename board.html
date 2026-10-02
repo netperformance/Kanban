@@ -100,6 +100,19 @@
     </div>
   </dialog>
 
+  <dialog id="view-dialog" aria-labelledby="view-title">
+    <div class="dialog-form">
+      <div class="ticket-meta view-meta" id="view-meta"></div>
+      <h2 class="dialog-heading view-title" id="view-title"></h2>
+      <p class="view-location" id="view-location"></p>
+      <div class="view-description" id="view-description"></div>
+      <footer class="dialog-actions">
+        <button class="secondary-button" id="view-edit" type="button" data-i18n="edit">Edit</button>
+        <button class="primary-button" id="view-close" type="button" data-i18n="close">Close</button>
+      </footer>
+    </div>
+  </dialog>
+
   <dialog id="story-dialog" aria-labelledby="story-dialog-title">
     <form class="dialog-form" id="story-form" novalidate>
       <h2 class="dialog-heading" id="story-dialog-title">New entry</h2>
