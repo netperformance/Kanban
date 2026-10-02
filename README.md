@@ -21,7 +21,7 @@ The interface is available in English and German (German name: *Arbeitsboard*).
 - **Quick add:** every column has a **+** button that creates an entry directly in that column.
 - **Move entries between projects and columns** from the edit dialog.
 - **Search** in titles and descriptions. Several words narrow the result; press <kbd>/</kbd> to jump to the search field and <kbd>Esc</kbd> to clear it.
-- **Filter by type and priority:** show all entries, a single type or priority, or any combination, for example only critical bugs. The priority buttons carry the colours of the priority labels. *All* resets both. Search and filter work together. Each project keeps its own search and filter, and both are remembered for the next visit. The filter bar always says how many entries are shown, and while a filter is active the column counters read "shown / total".
+- **Filter by type and priority:** show all entries, a single type or priority, or any combination, for example only critical bugs. The priority buttons carry the colours of the priority labels. A **Due** button shows only entries that are overdue or due today or tomorrow; its number turns red as soon as something is overdue. *All* resets type, priority and due filter. Search and filter work together. Each project keeps its own search and filter, and both are remembered for the next visit. The filter bar always says how many entries are shown, and while a filter is active the column counters read "shown / total".
 
 ### Description editor
 

@@ -18,6 +18,7 @@
   const projectActions = $('#project-actions');
   const filterChips = $('#filter-chips');
   const priorityChips = $('#priority-chips');
+  const dueChips = $('#due-chips');
   const filterStatus = $('#filter-status');
   const searchInput = $('#search-input');
   const noticeArea = $('#notice-area');
@@ -274,16 +275,29 @@
     return model.isPriority(task.priority) ? task.priority : 'normal';
   }
 
+  // Due soon: overdue, due today or due tomorrow, and not in a done column.
+  // These are exactly the entries whose date is highlighted on the card.
+  function isDueSoon(project, task) {
+    if (!model.isDate(task.due)) return false;
+    const column = project.columns.find((item) => item.id === task.columnId);
+    return !(column && column.done) && model.daysUntil(task.due) <= 1;
+  }
+
+  function isOverdue(project, task) {
+    return isDueSoon(project, task) && model.daysUntil(task.due) < 0;
+  }
+
   // Within a group (types, priorities) any selected value matches ("or"),
-  // between the groups and the search all must match ("and").
-  function isShown(task, filter, terms) {
+  // between the groups, the due filter and the search all must match ("and").
+  function isShown(project, task, filter, terms) {
     return (filter.types.length === 0 || filter.types.includes(typeOf(task))) &&
       (filter.priorities.length === 0 || filter.priorities.includes(priorityOf(task))) &&
+      (!filter.due || isDueSoon(project, task)) &&
       matchesSearch(task, terms);
   }
 
   function isFiltered(filter) {
-    return filter.types.length > 0 || filter.priorities.length > 0 || searchTerms(filter).length > 0;
+    return filter.types.length > 0 || filter.priorities.length > 0 || filter.due || searchTerms(filter).length > 0;
   }
 
   function setFilter(projectId, changes) {
@@ -307,7 +321,8 @@
     project.filter = model.normalizeFilter({
       types: extend(filter.types, typeOf(task)),
       priorities: extend(filter.priorities, priorityOf(task)),
-      search: matchesSearch(task, searchTerms(filter)) ? filter.search : ''
+      search: matchesSearch(task, searchTerms(filter)) ? filter.search : '',
+      due: filter.due && isDueSoon(project, task)
     });
   }
 
@@ -448,10 +463,27 @@
     return chip;
   }
 
+  // "Due" chip. Its number turns red as soon as an entry is overdue, so it
+  // also works as a warning without being pressed.
+  function createDueChip(project, pressed) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'filter-chip due-chip';
+    chip.dataset.dueFilter = 'due';
+    chip.title = t('filterDueHint');
+    chip.setAttribute('aria-pressed', String(pressed));
+    const amount = document.createElement('span');
+    amount.className = 'filter-count';
+    amount.textContent = String(project.tasks.filter((task) => isDueSoon(project, task)).length);
+    if (project.tasks.some((task) => isOverdue(project, task))) amount.classList.add('is-alert');
+    chip.append(createIcon('calendar'), document.createTextNode(t('filterDue')), amount);
+    return chip;
+  }
+
   function renderFilterBar(project) {
     const filter = projectFilter(project);
     const terms = searchTerms(filter);
-    const nothingSelected = filter.types.length === 0 && filter.priorities.length === 0;
+    const nothingSelected = filter.types.length === 0 && filter.priorities.length === 0 && !filter.due;
     const chips = [createFilterChip('all', t('filterAll'), project.tasks.length, nothingSelected)];
     model.TYPE_KEYS.forEach((type) => {
       const count = project.tasks.filter((task) => typeOf(task) === type).length;
@@ -462,8 +494,9 @@
       const count = project.tasks.filter((task) => priorityOf(task) === priority).length;
       return createPriorityChip(priority, count, filter.priorities.includes(priority));
     }));
+    dueChips.replaceChildren(createDueChip(project, filter.due));
     // The number of shown entries is always visible, also when "All" is selected.
-    const shown = project.tasks.filter((task) => isShown(task, filter, terms)).length;
+    const shown = project.tasks.filter((task) => isShown(project, task, filter, terms)).length;
     filterStatus.textContent = tCount('filterStatus', project.tasks.length, { shown, total: project.tasks.length });
     // While the user types, the field keeps what is typed.
     if (document.activeElement !== searchInput && searchInput.value !== filter.search) searchInput.value = filter.search;
@@ -575,7 +608,7 @@
     const filter = projectFilter(project);
     const terms = searchTerms(filter);
     const filtered = isFiltered(filter);
-    const shownTasks = tasks.filter((task) => isShown(task, filter, terms));
+    const shownTasks = tasks.filter((task) => isShown(project, task, filter, terms));
     count.textContent = filtered ? `${shownTasks.length} / ${tasks.length}` : String(tasks.length);
     count.classList.toggle('is-filtered', filtered);
     headingGroup.append(heading, count);
@@ -643,7 +676,18 @@
 
   // An entry header holds type, due date and priority. If they do not fit into
   // one line, the type is shown as icon only, instead of breaking the line.
+  // A divider before a filter group only makes sense next to another group.
+  // A group that starts a new line in the filter bar is shown without it.
+  function markWrappedFilterGroups() {
+    [priorityChips, dueChips].forEach((group) => {
+      group.classList.remove('is-line-start');
+      const previous = group.previousElementSibling;
+      if (previous && group.offsetTop > previous.offsetTop + previous.offsetHeight / 2) group.classList.add('is-line-start');
+    });
+  }
+
   function compactEntryHeaders() {
+    markWrappedFilterGroups();
     board.querySelectorAll('.ticket-meta').forEach((meta) => {
       meta.classList.remove('is-compact');
       const end = meta.querySelector('.ticket-meta-end');
@@ -1253,11 +1297,19 @@
     const value = chip.dataset.filter;
     // "All" resets types and priorities; the search stays.
     if (value === 'all') {
-      setFilter(project.id, { types: [], priorities: [] });
+      setFilter(project.id, { types: [], priorities: [], due: false });
     } else {
       setFilter(project.id, { types: toggle(projectFilter(project).types, value) });
     }
     const again = [...filterChips.querySelectorAll('[data-filter]')].find((item) => item.dataset.filter === value);
+    if (again) again.focus();
+  });
+
+  dueChips.addEventListener('click', (event) => {
+    if (!event.target.closest('[data-due-filter]')) return;
+    const project = getProject();
+    setFilter(project.id, { due: !projectFilter(project).due });
+    const again = dueChips.querySelector('[data-due-filter]');
     if (again) again.focus();
   });
 

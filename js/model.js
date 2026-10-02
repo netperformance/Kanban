@@ -68,7 +68,7 @@
   }
 
   function defaultBoard() {
-    return { columns: DEFAULT_COLUMNS.map((column, index) => ({ ...column, color: colorForIndex(index) })), tasks: [], filter: { types: [], priorities: [], search: '' } };
+    return { columns: DEFAULT_COLUMNS.map((column, index) => ({ ...column, color: colorForIndex(index) })), tasks: [], filter: { types: [], priorities: [], search: '', due: false } };
   }
 
   function normalizeBoardName(value) {
@@ -89,7 +89,9 @@
     return {
       types: pick(TYPE_KEYS, raw && raw.types),
       priorities: pick(PRIORITY_FILTER_ORDER, raw && raw.priorities),
-      search: raw && typeof raw.search === 'string' ? raw.search.slice(0, LIMITS.search) : ''
+      search: raw && typeof raw.search === 'string' ? raw.search.slice(0, LIMITS.search) : '',
+      // Only entries that are overdue or due today or tomorrow.
+      due: Boolean(raw && raw.due === true)
     };
   }
 

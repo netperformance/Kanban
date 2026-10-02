@@ -177,15 +177,17 @@
   });
 
   test('Modell: Filter je Projekt wird geprüft, "alle Typen" wird als leere Liste gespeichert', () => {
-    equal(model.normalizeFilter(undefined), { types: [], priorities: [], search: '' });
-    equal(model.normalizeFilter({ types: ['bug', 'epic', 'bug', 'task'] }), { types: ['task', 'bug'], priorities: [], search: '' });
-    equal(model.normalizeFilter({ types: ['idea', 'bug', 'story', 'task'] }), { types: [], priorities: [], search: '' });
+    equal(model.normalizeFilter(undefined), { types: [], priorities: [], search: '', due: false });
+    equal(model.normalizeFilter({ types: ['bug', 'epic', 'bug', 'task'] }), { types: ['task', 'bug'], priorities: [], search: '', due: false });
+    equal(model.normalizeFilter({ types: ['idea', 'bug', 'story', 'task'] }), { types: [], priorities: [], search: '', due: false });
     equal(model.normalizeFilter({ priorities: ['low', 'critical', 'urgent'] }).priorities, ['critical', 'low']);
     equal(model.normalizeFilter({ priorities: ['low', 'normal', 'high', 'critical'] }).priorities, []);
     equal(model.normalizeFilter({ search: 'x'.repeat(300) }).search.length, model.LIMITS.search);
     equal(model.normalizeFilter({ search: 42 }).search, '');
     const result = model.normalizeState({ projects: [{ id: 'general', title: 'General', columns: [], tasks: [], filter: { types: ['bug'], priorities: ['critical'], search: 'Login' } }] });
-    equal(result.state.projects[0].filter, { types: ['bug'], priorities: ['critical'], search: 'Login' });
+    equal(result.state.projects[0].filter, { types: ['bug'], priorities: ['critical'], search: 'Login', due: false });
+    equal(model.normalizeFilter({ due: true }).due, true);
+    equal(model.normalizeFilter({ due: 'yes' }).due, false);
   });
 
   test('Modell: Fälligkeitsdatum wird geprüft, ungültige Daten werden entfernt und gemeldet', () => {

@@ -824,3 +824,27 @@ test('Ansehen: Klick auf die übrige Karte und ein abgebrochener Zug am Titel ö
   await page.mouse.up();
   await expect(page.locator('dialog[open]')).toHaveCount(0);
 });
+
+// --- Filter "Fällig" -----------------------------------------------------------
+
+test('Fällig-Filter: zeigt überfällige, heute und morgen fällige Einträge, Zahl wird rot bei Überfälligem', async ({ page }) => {
+  const T = (id, due, columnId = 'backlog') => ({ id, title: `T${id}`, description: '', columnId, due });
+  await openBoard(page, { ...boardState([T('a', isoDate(-2)), T('b', isoDate(0)), T('c', isoDate(1)), T('d', isoDate(5)), T('e', ''), T('f', isoDate(-2), 'done')]), language: 'en' });
+  const due = page.locator('.due-chip');
+  await expect(due).toHaveText('Due3');
+  await expect(due.locator('.filter-count')).toHaveClass(/is-alert/);
+  await due.click();
+  await expect(due).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.ticket h3')).toHaveText(['Ta', 'Tb', 'Tc']);
+  await expect(page.locator('#filter-status')).toHaveText('3 of 6 entries shown');
+  await expect(chip(page, 'all')).toHaveAttribute('aria-pressed', 'false');
+  await page.reload();
+  await expect(page.locator('.due-chip')).toHaveAttribute('aria-pressed', 'true');
+  await createStory(page, 'Ohne Datum');
+  await expect(page.locator('.due-chip')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.ticket h3', { hasText: 'Ohne Datum' })).toBeVisible();
+  await page.locator('.due-chip').click();
+  await chip(page, 'all').click();
+  await expect(page.locator('.due-chip')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.ticket')).toHaveCount(7);
+});
