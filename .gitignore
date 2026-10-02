@@ -1,0 +1,30 @@
+# Abhängigkeiten (werden mit "npm install" neu erzeugt)
+node_modules/
+
+# Ergebnisse der Browsertests (Playwright)
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Exportierte Boards und Sicherungen: enthalten persönliche Daten
+arbeitsboard-*.json
+
+# Protokolle
+*.log
+npm-debug.log*
+
+# Lokale Umgebungsvariablen und Geheimnisse
+.env
+.env.*
+
+# Editoren und Entwicklungsumgebungen
+.vscode/
+.idea/
+*.swp
+*~
+
+# Betriebssystem
+Thumbs.db
+desktop.ini
+.DS_Store

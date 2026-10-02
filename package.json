@@ -1,0 +1,19 @@
+{
+  "name": "arbeitsboard",
+  "version": "0.0.9",
+  "private": true,
+  "description": "Personal Kanban board that runs entirely in the browser. No server, no account, data stays in localStorage.",
+  "author": "Aaron Kreis (https://aaron.de)",
+  "license": "MIT",
+  "homepage": "https://github.com/netperformance/Kanban",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/netperformance/Kanban.git"
+  },
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0"
+  }
+}

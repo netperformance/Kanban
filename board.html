@@ -1,0 +1,168 @@
+<!doctype html>
+<!-- Work board (Arbeitsboard). Copyright (c) 2026 Aaron Kreis (https://aaron.de). Licensed under the MIT License, see LICENSE. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' file:; style-src 'self' file:; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title data-i18n="documentTitle">Work board</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2320251f'/%3E%3Crect x='12' y='14' width='11' height='36' rx='3' fill='%23d95d45'/%3E%3Crect x='27' y='21' width='11' height='29' rx='3' fill='%23c58b12'/%3E%3Crect x='42' y='10' width='10' height='40' rx='3' fill='%2334835b'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <h1><span data-i18n="appName">Work board</span> <span class="version">v0.0.9</span></h1>
+      <div class="topbar-controls">
+        <button class="secondary-button settings-button" id="open-settings" type="button" aria-haspopup="dialog">
+          <svg class="settings-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19.3 9.8 L21.9 10.3 L21.9 13.7 L19.3 14.2 L18.7 15.5 L20.2 17.8 L17.8 20.2 L15.5 18.7 L14.2 19.3 L13.7 21.9 L10.3 21.9 L9.8 19.3 L8.5 18.7 L6.2 20.2 L3.8 17.8 L5.3 15.5 L4.7 14.2 L2.1 13.7 L2.1 10.3 L4.7 9.8 L5.3 8.5 L3.8 6.2 L6.2 3.8 L8.5 5.3 L9.8 4.7 L10.3 2.1 L13.7 2.1 L14.2 4.7 L15.5 5.3 L17.8 3.8 L20.2 6.2 L18.7 8.5 Z"/><circle cx="12" cy="12" r="3.2"/></svg>
+          <span data-i18n="settings">Settings</span>
+        </button>
+        <div class="topbar-actions">
+          <button class="secondary-button" id="create-project" type="button" data-i18n="newProject">New project</button>
+          <button class="secondary-button" id="create-column" type="button" data-i18n="newColumn">New column</button>
+          <button class="primary-button" id="create-story" type="button" data-i18n="newEntry">+ New entry</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="notice-area" id="notice-area"></div>
+
+    <nav class="project-bar" data-i18n-aria-label="projectsLabel" aria-label="Projects">
+      <div class="project-tabs" id="project-tabs" role="tablist" data-i18n-aria-label="projectsLabel" aria-label="Projects"></div>
+      <div class="project-actions" id="project-actions">
+        <button class="secondary-button" id="edit-project" type="button" data-i18n="editProject">Edit project</button>
+        <button class="secondary-button delete-project-button" id="delete-project" type="button" data-i18n="deleteProject">Delete project</button>
+      </div>
+    </nav>
+
+    <section class="board" id="board" role="tabpanel"></section>
+    <footer class="board-credit"><a href="https://aaron.de">aaron.de</a></footer>
+  </main>
+
+  <dialog id="settings-dialog" aria-labelledby="settings-dialog-title">
+    <div class="dialog-form">
+      <h2 class="dialog-heading" id="settings-dialog-title" data-i18n="settings">Settings</h2>
+
+      <section class="settings-section" aria-labelledby="settings-language-title">
+        <h3 class="settings-title" id="settings-language-title" data-i18n="languageSection">Language</h3>
+        <div class="language-switch" role="group" aria-labelledby="settings-language-title">
+          <button type="button" data-language="en" lang="en" aria-pressed="true">English</button>
+          <button type="button" data-language="de" lang="de" aria-pressed="false">Deutsch</button>
+        </div>
+      </section>
+
+      <section class="settings-section" aria-labelledby="settings-data-title">
+        <h3 class="settings-title" id="settings-data-title" data-i18n="dataSection">Backup</h3>
+        <p class="settings-hint" data-i18n="dataHint">Your board is stored only in this browser. Export it regularly as a backup or to move it to another browser.</p>
+        <div class="settings-row">
+          <button class="secondary-button" id="export-board" type="button" data-i18n="exportBoard">Export</button>
+          <p class="settings-hint" data-i18n="exportHint">Downloads the whole board as a JSON file.</p>
+        </div>
+        <div class="settings-row">
+          <button class="secondary-button" id="import-board" type="button" data-i18n="importBoard">Import</button>
+          <p class="settings-hint" data-i18n="importHint">Replaces the current board with the content of a JSON file. The current state is backed up in the browser first.</p>
+        </div>
+        <input id="import-file" type="file" accept="application/json,.json" hidden>
+        <p class="settings-status" id="settings-status" role="status" aria-live="polite"></p>
+      </section>
+
+      <footer class="dialog-actions">
+        <button class="primary-button" id="close-settings" type="button" data-i18n="close">Close</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <dialog id="story-dialog" aria-labelledby="story-dialog-title">
+    <form class="dialog-form" id="story-form" novalidate>
+      <h2 class="dialog-heading" id="story-dialog-title">New story</h2>
+      <input id="task-id" type="hidden">
+      <div class="field">
+        <label for="story-title" data-i18n="titleLabel">Title</label>
+        <input id="story-title" type="text" maxlength="120" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="story-description" data-i18n="descriptionLabel">Description</label>
+        <div class="editor-toolbar" id="editor-toolbar" role="toolbar" data-i18n-aria-label="formatText" aria-label="Format text">
+          <button class="editor-command" type="button" data-command="bold" data-i18n-aria-label="bold" data-i18n-title="bold" aria-label="Bold" title="Bold"><strong>B</strong></button>
+          <button class="editor-command" type="button" data-command="italic" data-i18n-aria-label="italic" data-i18n-title="italic" aria-label="Italic" title="Italic"><em>I</em></button>
+          <button class="editor-command" type="button" data-command="list" data-i18n="list" data-i18n-aria-label="list" data-i18n-title="list" aria-label="List" title="List">List</button>
+          <button class="editor-command editor-color" type="button" data-command="color" data-value="#20251f" data-i18n-aria-label="blackText" data-i18n-title="blackText" aria-label="Black text color" title="Black text color"><span class="editor-swatch swatch-black" aria-hidden="true"></span></button>
+          <button class="editor-command editor-color" type="button" data-command="color" data-value="#b7352a" data-i18n-aria-label="redText" data-i18n-title="redText" aria-label="Red text color" title="Red text color"><span class="editor-swatch swatch-red" aria-hidden="true"></span></button>
+        </div>
+        <div id="story-description" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-i18n-aria-label="descriptionLabel" data-i18n-placeholder="descriptionPlaceholder" aria-label="Description" data-placeholder="Enter a description"></div>
+      </div>
+      <div class="field">
+        <label for="story-project" data-i18n="projectLabel">Project</label>
+        <select id="story-project"></select>
+      </div>
+      <div class="field">
+        <label for="story-priority" data-i18n="priorityLabel">Priority</label>
+        <select id="story-priority">
+          <option value="low" data-i18n="priority.low">Low</option>
+          <option value="normal" data-i18n="priority.normal" selected>Normal</option>
+          <option value="high" data-i18n="priority.high">High</option>
+          <option value="critical" data-i18n="priority.critical">Critical</option>
+        </select>
+      </div>
+      <p class="form-error" id="story-error" aria-live="polite"></p>
+      <footer class="dialog-actions">
+        <button class="secondary-button" id="cancel-story" type="button" data-i18n="cancel">Cancel</button>
+        <button class="primary-button" type="submit" data-i18n="save">Save</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="column-dialog" aria-labelledby="column-dialog-title">
+    <form class="dialog-form" id="column-form" novalidate>
+      <h2 class="dialog-heading" id="column-dialog-title">New column</h2>
+      <input id="column-id" type="hidden">
+      <div class="field">
+        <label for="column-title" data-i18n="nameLabel">Name</label>
+        <input id="column-title" type="text" maxlength="48" required autocomplete="off" data-i18n-placeholder="columnPlaceholder" placeholder="For example: Pending">
+      </div>
+      <div class="field">
+        <label for="column-color" data-i18n="colorLabel">Color</label>
+        <input id="column-color" type="color" value="#d95d45">
+      </div>
+      <div class="field checkbox-field">
+        <input id="column-done" type="checkbox">
+        <label for="column-done" data-i18n="doneColumnLabel">Tickets in this column count as done</label>
+      </div>
+      <div class="field" id="column-position-row">
+        <label for="column-position" data-i18n="positionLabel">Position</label>
+        <select id="column-position"></select>
+      </div>
+      <p class="form-error" id="column-error" aria-live="polite"></p>
+      <footer class="dialog-actions">
+        <button class="secondary-button" id="cancel-column" type="button" data-i18n="cancel">Cancel</button>
+        <button class="primary-button" type="submit" data-i18n="save">Save</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="project-dialog" aria-labelledby="project-dialog-title">
+    <form class="dialog-form" id="project-form" novalidate>
+      <h2 class="dialog-heading" id="project-dialog-title" data-i18n="newProject">New project</h2>
+      <input id="project-id" type="hidden">
+      <div class="field">
+        <label for="project-title" data-i18n="projectNameLabel">Project name</label>
+        <input id="project-title" type="text" maxlength="48" required autocomplete="off" data-i18n-placeholder="projectPlaceholder" placeholder="For example: Website relaunch">
+      </div>
+      <p class="form-error" id="project-error" aria-live="polite"></p>
+      <footer class="dialog-actions">
+        <button class="secondary-button" id="cancel-project" type="button" data-i18n="cancel">Cancel</button>
+        <button class="primary-button" id="save-project" type="submit" data-i18n="createProject">Create project</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <script src="js/i18n.js"></script>
+  <script src="js/sanitize.js"></script>
+  <script src="js/model.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/editor.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
