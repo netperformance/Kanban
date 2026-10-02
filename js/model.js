@@ -68,12 +68,15 @@
   }
 
   function defaultBoard() {
-    return { columns: DEFAULT_COLUMNS.map((column, index) => ({ ...column, color: colorForIndex(index) })), tasks: [], filter: { types: [], priorities: [], search: '', due: false } };
+    return { columns: DEFAULT_COLUMNS.map((column, index) => ({ ...column, color: colorForIndex(index) })), tasks: [], filter: { types: [], priorities: [], search: '', due: false, sort: 'manual' } };
   }
 
   function normalizeBoardName(value) {
     return typeof value === 'string' ? value.trim().slice(0, LIMITS.boardName) : '';
   }
+
+  // Display order of the entries within a column. "manual" is the order set by drag and drop.
+  const SORT_KEYS = Object.freeze(['manual', 'due', 'priority']);
 
   // Order of the priorities in the filter bar: most urgent first.
   const PRIORITY_FILTER_ORDER = Object.freeze(['critical', 'high', 'normal', 'low']);
@@ -91,7 +94,8 @@
       priorities: pick(PRIORITY_FILTER_ORDER, raw && raw.priorities),
       search: raw && typeof raw.search === 'string' ? raw.search.slice(0, LIMITS.search) : '',
       // Only entries that are overdue or due today or tomorrow.
-      due: Boolean(raw && raw.due === true)
+      due: Boolean(raw && raw.due === true),
+      sort: raw && SORT_KEYS.includes(raw.sort) ? raw.sort : 'manual'
     };
   }
 
@@ -278,7 +282,7 @@
   }
 
   ns.model = Object.freeze({
-    SCHEMA_VERSION, GENERAL_PROJECT_ID, LIMITS, PRIORITY_KEYS, PRIORITY_FILTER_ORDER, TYPE_KEYS, DEFAULT_TYPE, THEMES, DEFAULT_THEME, COLUMN_COLORS, DEFAULT_COLUMNS,
+    SCHEMA_VERSION, GENERAL_PROJECT_ID, LIMITS, PRIORITY_KEYS, PRIORITY_FILTER_ORDER, SORT_KEYS, TYPE_KEYS, DEFAULT_TYPE, THEMES, DEFAULT_THEME, COLUMN_COLORS, DEFAULT_COLUMNS,
     isPriority, isType, isDate, daysUntil, colorForIndex, isColor, normalizeColor, nextColumnColor, createId, defaultBoard, defaultState, normalizeBoardName, normalizeFilter, normalizeState, problemCount
   });
 })(window.Arbeitsboard = window.Arbeitsboard || {});

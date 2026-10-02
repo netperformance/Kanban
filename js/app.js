@@ -22,6 +22,7 @@
   const filterStatus = $('#filter-status');
   const searchInput = $('#search-input');
   const searchClear = $('#search-clear');
+  const sortSelect = $('#sort-select');
   const noticeArea = $('#notice-area');
   const importInput = $('#import-file');
   const settingsDialog = $('#settings-dialog');
@@ -323,8 +324,29 @@
       types: extend(filter.types, typeOf(task)),
       priorities: extend(filter.priorities, priorityOf(task)),
       search: matchesSearch(task, searchTerms(filter)) ? filter.search : '',
-      due: filter.due && isDueSoon(project, task)
+      due: filter.due && isDueSoon(project, task),
+      sort: filter.sort
     });
+  }
+
+  // Display order within a column. Sorting only changes what is shown; the
+  // own order set by drag and drop stays stored. Entries that are equal keep
+  // their own order (the sort is stable).
+  function sortTasks(project, tasks) {
+    const sort = projectFilter(project).sort;
+    if (sort === 'due') {
+      const key = (task) => (model.isDate(task.due) ? task.due : '9999-12-31');
+      return [...tasks].sort((a, b) => key(a).localeCompare(key(b)));
+    }
+    if (sort === 'priority') {
+      const rank = (task) => model.PRIORITY_FILTER_ORDER.indexOf(priorityOf(task));
+      return [...tasks].sort((a, b) => rank(a) - rank(b));
+    }
+    return tasks;
+  }
+
+  function isManualOrder(project) {
+    return projectFilter(project).sort === 'manual';
   }
 
   // ---------------------------------------------------------------------------
@@ -502,6 +524,8 @@
     // While the user types, the field keeps what is typed.
     if (document.activeElement !== searchInput && searchInput.value !== filter.search) searchInput.value = filter.search;
     searchClear.hidden = searchInput.value === '';
+    sortSelect.value = filter.sort;
+    sortSelect.classList.toggle('is-active', filter.sort !== 'manual');
   }
 
   function createButton(label, text, action, id, className = 'icon-button', disabled = false) {
@@ -610,7 +634,7 @@
     const filter = projectFilter(project);
     const terms = searchTerms(filter);
     const filtered = isFiltered(filter);
-    const shownTasks = tasks.filter((task) => isShown(project, task, filter, terms));
+    const shownTasks = sortTasks(project, tasks.filter((task) => isShown(project, task, filter, terms)));
     count.textContent = filtered ? `${shownTasks.length} / ${tasks.length}` : String(tasks.length);
     count.classList.toggle('is-filtered', filtered);
     headingGroup.append(heading, count);
@@ -1368,6 +1392,10 @@
     }, 400);
   });
 
+  sortSelect.addEventListener('change', () => {
+    if (model.SORT_KEYS.includes(sortSelect.value)) setFilter(getProject().id, { sort: sortSelect.value });
+  });
+
   searchClear.addEventListener('click', () => {
     searchInput.value = '';
     searchInput.dispatchEvent(new Event('input'));
@@ -1461,6 +1489,11 @@
   board.addEventListener('dragstart', (event) => {
     const ticket = event.target.closest('.ticket');
     if (!ticket) return;
+    // On touch screens the own finger drag above is used instead.
+    if (touchDrag) {
+      event.preventDefault();
+      return;
+    }
     draggedTaskId = ticket.dataset.taskId;
     ticket.classList.add('is-dragging');
     event.dataTransfer.effectAllowed = 'move';
@@ -1498,9 +1531,129 @@
     event.preventDefault();
     list.classList.remove('is-drag-over');
     const taskId = draggedTaskId;
-    const target = getDropTarget(list, event.clientY);
+    const target = isManualOrder(getProject()) ? getDropTarget(list, event.clientY) : null;
     clearDropIndicators();
     placeTaskAtDropPosition(taskId, list.dataset.taskList, target ? target.dataset.taskId : null);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Dragging with a finger (touch screens)
+  //
+  // A long press on an entry starts the drag; a short touch, a tap or a swipe
+  // behave as usual (scrolling, opening the title). A copy of the entry follows
+  // the finger, the target column is highlighted, and near the top or bottom
+  // edge of the screen the page scrolls along.
+
+  const TOUCH_HOLD_MILLISECONDS = 450;
+  const TOUCH_MOVE_TOLERANCE = 10;
+  const TOUCH_EDGE = 70;
+  let touchDrag = null;
+
+  function touchListAt(x, y) {
+    const element = document.elementFromPoint(x, y);
+    return element ? element.closest('.task-list') : null;
+  }
+
+  function updateTouchIndicators() {
+    document.querySelectorAll('.task-list.is-drag-over').forEach((list) => list.classList.remove('is-drag-over'));
+    clearDropIndicators();
+    const list = touchListAt(touchDrag.x, touchDrag.y);
+    touchDrag.list = list;
+    touchDrag.target = null;
+    if (!list) return;
+    list.classList.add('is-drag-over');
+    if (isManualOrder(getProject())) {
+      touchDrag.target = getDropTarget(list, touchDrag.y);
+      if (touchDrag.target) touchDrag.target.classList.add('is-drop-before');
+    }
+  }
+
+  function moveTouchGhost() {
+    touchDrag.ghost.style.transform = `translate(${touchDrag.x - touchDrag.offsetX}px, ${touchDrag.y - touchDrag.offsetY}px)`;
+  }
+
+  function touchAutoScroll() {
+    if (!touchDrag || !touchDrag.active) return;
+    let step = 0;
+    if (touchDrag.y < TOUCH_EDGE) step = -Math.ceil((TOUCH_EDGE - touchDrag.y) / 5);
+    if (touchDrag.y > window.innerHeight - TOUCH_EDGE) step = Math.ceil((touchDrag.y - (window.innerHeight - TOUCH_EDGE)) / 5);
+    if (step) {
+      window.scrollBy(0, step);
+      updateTouchIndicators();
+    }
+    touchDrag.frame = requestAnimationFrame(touchAutoScroll);
+  }
+
+  function startTouchDrag() {
+    if (!touchDrag || !touchDrag.ticket.isConnected) return;
+    const bounds = touchDrag.ticket.getBoundingClientRect();
+    const ghost = touchDrag.ticket.cloneNode(true);
+    ghost.classList.add('drag-ghost');
+    ghost.setAttribute('aria-hidden', 'true');
+    ghost.style.width = `${bounds.width}px`;
+    ghost.style.height = `${bounds.height}px`;
+    document.body.append(ghost);
+    Object.assign(touchDrag, { ghost, active: true, offsetX: touchDrag.x - bounds.left, offsetY: touchDrag.y - bounds.top });
+    touchDrag.ticket.classList.add('is-dragging');
+    moveTouchGhost();
+    updateTouchIndicators();
+    touchDrag.frame = requestAnimationFrame(touchAutoScroll);
+  }
+
+  function endTouchDrag() {
+    if (!touchDrag) return;
+    clearTimeout(touchDrag.timer);
+    cancelAnimationFrame(touchDrag.frame);
+    if (touchDrag.ghost) touchDrag.ghost.remove();
+    touchDrag.ticket.classList.remove('is-dragging');
+    document.querySelectorAll('.task-list.is-drag-over').forEach((list) => list.classList.remove('is-drag-over'));
+    clearDropIndicators();
+    touchDrag = null;
+  }
+
+  board.addEventListener('touchstart', (event) => {
+    endTouchDrag();
+    const ticket = event.target.closest('.ticket');
+    if (event.touches.length !== 1 || !ticket || event.target.closest('button')) return;
+    const touch = event.touches[0];
+    touchDrag = { ticket, taskId: ticket.dataset.taskId, startX: touch.clientX, startY: touch.clientY, x: touch.clientX, y: touch.clientY, active: false };
+    touchDrag.timer = setTimeout(startTouchDrag, TOUCH_HOLD_MILLISECONDS);
+  }, { passive: true });
+
+  board.addEventListener('touchmove', (event) => {
+    if (!touchDrag) return;
+    const touch = event.touches[0];
+    touchDrag.x = touch.clientX;
+    touchDrag.y = touch.clientY;
+    if (!touchDrag.active) {
+      // The finger moved before the long press was complete: this is scrolling.
+      if (Math.hypot(touchDrag.x - touchDrag.startX, touchDrag.y - touchDrag.startY) > TOUCH_MOVE_TOLERANCE) endTouchDrag();
+      return;
+    }
+    event.preventDefault();
+    moveTouchGhost();
+    updateTouchIndicators();
+  }, { passive: false });
+
+  board.addEventListener('touchend', (event) => {
+    if (!touchDrag) return;
+    if (!touchDrag.active) {
+      endTouchDrag();
+      return;
+    }
+    // A finished drag must not also count as a tap on the title.
+    event.preventDefault();
+    const { taskId, list, target } = touchDrag;
+    endTouchDrag();
+    lastDragEnd = Date.now();
+    if (list) placeTaskAtDropPosition(taskId, list.dataset.taskList, target ? target.dataset.taskId : null);
+  });
+
+  board.addEventListener('touchcancel', endTouchDrag);
+
+  // The long press must not open the browser's context menu on the entry.
+  board.addEventListener('contextmenu', (event) => {
+    if (touchDrag && event.target.closest('.ticket')) event.preventDefault();
   });
 
   store.onExternalChange(() => {

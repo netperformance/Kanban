@@ -886,3 +886,66 @@ test('Spalte leeren: jede Spalte, nach Rückfrage, auch ausgefilterte Einträge,
   await expect(clear('done')).toBeDisabled();
   await expect(clear('backlog')).toBeEnabled();
 });
+
+// --- Sortieren -----------------------------------------------------------------
+
+test('Sortieren: nach Fälligkeit und Priorität, eigene Reihenfolge bleibt gespeichert', async ({ page }) => {
+  const T = (id, priority, due) => ({ id, title: `T${id}`, description: '', columnId: 'backlog', priority, due });
+  await openBoard(page, { ...boardState([T('1', 'low', '2030-03-01'), T('2', 'critical', ''), T('3', 'normal', '2030-01-15'), T('4', 'critical', '2030-02-01')]), language: 'en' });
+  const titles = () => page.locator('.column').first().locator('.ticket h3');
+  await expect(titles()).toHaveText(['T1', 'T2', 'T3', 'T4']);
+  await page.selectOption('#sort-select', 'due');
+  await expect(titles()).toHaveText(['T3', 'T4', 'T1', 'T2']);
+  await page.selectOption('#sort-select', 'priority');
+  await expect(titles()).toHaveText(['T2', 'T4', 'T3', 'T1']);
+  await page.reload();
+  await expect(page.locator('#sort-select')).toHaveValue('priority');
+  await expect(titles()).toHaveText(['T2', 'T4', 'T3', 'T1']);
+  expect((await stored(page)).projects[0].tasks.map((task) => task.id)).toEqual(['1', '2', '3', '4']);
+  await chip(page, 'all').click();
+  await expect(page.locator('#sort-select')).toHaveValue('priority');
+  await page.selectOption('#sort-select', 'manual');
+  await expect(titles()).toHaveText(['T1', 'T2', 'T3', 'T4']);
+});
+
+// --- Ziehen mit dem Finger ------------------------------------------------------
+
+async function touch(page) {
+  const client = await page.context().newCDPSession(page);
+  const send = (type, points) => client.send('Input.dispatchTouchEvent', { type, touchPoints: points });
+  return {
+    async drag(from, to, holdMs) {
+      await send('touchStart', [{ x: from.x, y: from.y }]);
+      await page.waitForTimeout(holdMs);
+      const steps = 8;
+      for (let step = 1; step <= steps; step += 1) {
+        await send('touchMove', [{ x: from.x + ((to.x - from.x) * step) / steps, y: from.y + ((to.y - from.y) * step) / steps }]);
+        await page.waitForTimeout(16);
+      }
+      await send('touchEnd', []);
+    }
+  };
+}
+
+test.describe('Touch', () => {
+  test.use({ hasTouch: true });
+
+  test('langes Drücken verschiebt einen Eintrag, kurzes Wischen nicht', async ({ page }) => {
+    await openBoard(page, boardState([{ id: 'a', title: 'Ziehen', description: 'Text', columnId: 'backlog' }]));
+    const source = await page.locator('.ticket[data-task-id=a] .ticket-description').boundingBox();
+    const target = await page.locator('[data-task-list=done]').boundingBox();
+    const from = { x: source.x + 20, y: source.y + 5 };
+    const to = { x: target.x + target.width / 2, y: target.y + 40 };
+    const finger = await touch(page);
+
+    // A quick vertical swipe is scrolling, not dragging.
+    await finger.drag(from, { x: from.x, y: from.y + 80 }, 100);
+    expect((await stored(page)).projects[0].tasks[0].columnId).toBe('backlog');
+    await expect(page.locator('.drag-ghost')).toHaveCount(0);
+
+    await finger.drag(from, to, 650);
+    await expect.poll(async () => (await stored(page)).projects[0].tasks[0].columnId).toBe('done');
+    await expect(page.locator('.drag-ghost')).toHaveCount(0);
+    await expect(page.locator('dialog[open]')).toHaveCount(0);
+  });
+});
