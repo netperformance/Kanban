@@ -250,6 +250,13 @@ test('Neue Spalte bekommt die nächste Farbe aus der Palette', async ({ page }) 
   await openBoard(page, boardState([]));
   await page.click('#create-column');
   await expect(page.locator('#column-color')).toHaveValue('#c58b12');
+  // The done checkbox only appears when editing an existing column.
+  await expect(page.locator('#column-done')).toBeHidden();
+  await page.fill('#column-title', 'Review');
+  await page.click('#column-form button[type=submit]');
+  expect((await stored(page)).projects[0].columns.at(-1).done).toBe(false);
+  await page.click('[data-action=edit-column][data-id=done]');
+  await expect(page.locator('#column-done')).toBeVisible();
 });
 
 test('Ungültige Priorität wird als Normal angezeigt', async ({ page }) => {

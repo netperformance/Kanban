@@ -37,6 +37,7 @@
   const columnTitleInput = $('#column-title');
   const columnColorInput = $('#column-color');
   const columnDoneInput = $('#column-done');
+  const columnDoneRow = $('#column-done-row');
   const columnPositionInput = $('#column-position');
   const columnPositionRow = $('#column-position-row');
   const columnDialogTitle = $('#column-dialog-title');
@@ -519,6 +520,8 @@
     columnIdInput.value = column ? column.id : '';
     columnDialogTitle.textContent = column ? t('editColumn') : t('newColumn');
     columnPositionRow.hidden = Boolean(column);
+    // A new column never counts as done. Only an existing column can be marked as done.
+    columnDoneRow.hidden = !column;
     columnTitleInput.value = column ? column.title : '';
     columnColorInput.value = column
       ? model.normalizeColor(column.color, project.columns.indexOf(column))
@@ -887,7 +890,7 @@
     }
     const colorIndex = existingId ? project.columns.findIndex((item) => item.id === existingId) : project.columns.length;
     const color = model.normalizeColor(columnColorInput.value, colorIndex);
-    const done = columnDoneInput.checked;
+    const done = existingId ? columnDoneInput.checked : false;
     const position = columnPositionInput.value;
     const saved = commit((draft) => {
       const columns = findProject(draft, project.id).columns;
