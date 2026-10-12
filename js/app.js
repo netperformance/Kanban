@@ -3,10 +3,10 @@
   'use strict';
 
   const { translate } = ns.i18n;
-  const { sanitizeDescription } = ns.sanitize;
+  const { sanitizeDescription, linkify } = ns.sanitize;
   const model = ns.model;
   // Keep in step with "version" in package.json.
-  const APP_VERSION = '0.0.9';
+  const APP_VERSION = '1.0.1';
   const STORAGE_KEY = 'personal-kanban-board.v1';
   const MAX_IMPORT_MEGABYTES = 5;
   const INFO_NOTICE_MILLISECONDS = 6000;
@@ -588,8 +588,9 @@
     if (task.description) {
       const description = document.createElement('div');
       description.className = 'ticket-description';
-      // The only place where HTML is inserted. It is sanitized again right here.
-      description.innerHTML = sanitizeDescription(task.description);
+      // The only place where HTML is inserted. It is sanitized again right here;
+      // web addresses become links only for display.
+      description.innerHTML = linkify(sanitizeDescription(task.description));
       main.append(description);
     }
 
@@ -753,7 +754,7 @@
     $('#view-location').textContent = t('entryLocation', { project: projectTitle(project), column: column ? column.title : '' });
     const description = $('#view-description');
     if (task.description) {
-      description.innerHTML = sanitizeDescription(task.description);
+      description.innerHTML = linkify(sanitizeDescription(task.description));
       description.classList.remove('is-empty');
     } else {
       description.textContent = t('noDescription');
@@ -1614,7 +1615,8 @@
   board.addEventListener('touchstart', (event) => {
     endTouchDrag();
     const ticket = event.target.closest('.ticket');
-    if (event.touches.length !== 1 || !ticket || event.target.closest('button')) return;
+    // A touch on a button or a link does what it is for and starts no drag.
+    if (event.touches.length !== 1 || !ticket || event.target.closest('button, a')) return;
     const touch = event.touches[0];
     touchDrag = { ticket, taskId: ticket.dataset.taskId, startX: touch.clientX, startY: touch.clientY, x: touch.clientX, y: touch.clientY, active: false };
     touchDrag.timer = setTimeout(startTouchDrag, TOUCH_HOLD_MILLISECONDS);

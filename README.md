@@ -30,6 +30,7 @@ The interface is available in English and German (German name: *Arbeitsboard*).
 - Bold, italic, bulleted lists and two text colours.
 - Keyboard shortcuts: <kbd>Ctrl</kbd>+<kbd>B</kbd> for bold, <kbd>Ctrl</kbd>+<kbd>I</kbd> for italic and <kbd>Ctrl</kbd>+<kbd>Z</kbd> to undo the last formatting step. On a Mac, use <kbd>Cmd</kbd> instead of <kbd>Ctrl</kbd>.
 - Pasted or dropped content is inserted as plain text, so no foreign formatting or code ends up in an entry.
+- Web addresses that start with `http://`, `https://` or `www.` become clickable links on the card and in the read view. They open in a new tab.
 - Built on the standard Selection and Range APIs, without the deprecated `document.execCommand()`.
 
 ### Your data
@@ -52,6 +53,7 @@ The interface is available in English and German (German name: *Arbeitsboard*).
 
 - Strict Content Security Policy: only the app's own scripts and styles may run, no external requests.
 - Descriptions pass an allowlist sanitizer: only the formatting the editor offers survives, every other element and attribute is removed.
+- Links are not stored. They are created only for display, only for `http` and `https` addresses, and open with `noopener noreferrer`.
 - No runtime dependencies and no build step.
 
 ### Accessibility

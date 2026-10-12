@@ -89,6 +89,54 @@
     equal(sanitizeDescription(html), html);
   });
 
+  // --- Links in der Anzeige ---------------------------------------------------
+
+  const { linkify } = ns.sanitize;
+
+  function linksIn(html) {
+    const body = new DOMParser().parseFromString(html, 'text/html').body;
+    return [...body.querySelectorAll('a')].map((link) => ({ href: link.getAttribute('href'), text: link.textContent, target: link.target, rel: link.rel, draggable: link.getAttribute('draggable') }));
+  }
+
+  test('Links: http, https und www werden zu Links, die in einem neuen Tab öffnen', () => {
+    const links = linksIn(linkify('Siehe https://aaron.de/posts/arbeitsboard/ und http://example.com sowie www.example.org/a?b=1#c'));
+    equal(links.map((link) => link.href), ['https://aaron.de/posts/arbeitsboard/', 'http://example.com/', 'https://www.example.org/a?b=1#c']);
+    equal(links.map((link) => link.text), ['https://aaron.de/posts/arbeitsboard/', 'http://example.com', 'www.example.org/a?b=1#c']);
+    links.forEach((link) => {
+      equal(link.target, '_blank');
+      equal(link.rel, 'noopener noreferrer');
+      equal(link.draggable, 'false');
+    });
+  });
+
+  test('Links: Satzzeichen und Klammer am Ende gehören nicht zur Adresse', () => {
+    equal(linksIn(linkify('Am Ende https://example.com/a.')).map((link) => link.text), ['https://example.com/a']);
+    equal(linksIn(linkify('(siehe https://example.com/b), dann')).map((link) => link.text), ['https://example.com/b']);
+    equal(linksIn(linkify('https://de.wikipedia.org/wiki/Kanban_(Entwicklung)')).map((link) => link.text), ['https://de.wikipedia.org/wiki/Kanban_(Entwicklung)']);
+    equal(linkify('Am Ende https://example.com/a.').endsWith('</a>.'), true);
+  });
+
+  test('Links: andere Protokolle und Text ohne Adresse bleiben unverändert', () => {
+    ['javascript:alert(1)', 'data:text/html,x', 'file:///C:/x', 'mailto:a@b.de', 'nur Text', 'awww.example.com', 'xhttps://example.com'].forEach((text) => {
+      equal(linkify(text), text);
+    });
+  });
+
+  test('Links: Formatierung bleibt erhalten, Adressen in fettem Text und Listen werden verlinkt', () => {
+    const html = sanitizeDescription('<b>fett https://example.com</b><ul><li>www.example.org</li></ul>');
+    const linked = linkify(html);
+    equal(linksIn(linked).map((link) => link.href), ['https://example.com/', 'https://www.example.org/']);
+    assert(linked.startsWith('<b>fett <a '), linked);
+    equal(sanitizeDescription(linked), html, 'Ohne Links ergibt sich wieder die gespeicherte Beschreibung:');
+  });
+
+  test('Links: Text aus einer Adresse wird nicht als HTML gelesen', () => {
+    const linked = linkify(sanitizeDescription('https://example.com/&lt;img src=x onerror=window.__xss=20&gt;'));
+    const body = new DOMParser().parseFromString(linked, 'text/html').body;
+    equal(body.querySelectorAll('img').length, 0);
+    equal([...body.querySelectorAll('*')].map((element) => element.tagName), ['A']);
+  });
+
   // --- Übersetzung ------------------------------------------------------------
 
   test('Übersetzung: Platzhalter werden ersetzt', () => {

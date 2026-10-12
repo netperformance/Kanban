@@ -825,6 +825,51 @@ test('Ansehen: Klick auf die übrige Karte und ein abgebrochener Zug am Titel ö
   await expect(page.locator('dialog[open]')).toHaveCount(0);
 });
 
+test('Links: Adressen in der Beschreibung sind auf der Karte und in der Ansicht anklickbar', async ({ page, context }) => {
+  // No real network access during the test: the new tab gets a local answer.
+  await context.route('https://example.com/**', (route) => route.fulfill({ contentType: 'text/html', body: '<title>Ziel</title>' }));
+  await openBoard(page);
+  await page.click('#create-story');
+  await page.fill('#story-title', 'Mit Link');
+  await page.locator('#story-description').click();
+  await page.keyboard.type('Siehe https://example.com/doku.');
+  await page.click('#story-form button[type=submit]');
+  expect((await stored(page)).projects[0].tasks[0].description).not.toContain('<a');
+  const link = page.locator('.ticket-description a');
+  await expect(link).toHaveText('https://example.com/doku');
+  await expect(link).toHaveAttribute('href', 'https://example.com/doku');
+  await expect(link).toHaveAttribute('target', '_blank');
+  await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  const [popup] = await Promise.all([page.waitForEvent('popup'), link.click()]);
+  await popup.waitForLoadState();
+  expect(popup.url()).toBe('https://example.com/doku');
+  await popup.close();
+  // A click on the link opens no dialog of the board.
+  await expect(page.locator('dialog[open]')).toHaveCount(0);
+  await page.click('.ticket-title');
+  const viewLink = page.locator('#view-description a');
+  await expect(viewLink).toHaveAttribute('href', 'https://example.com/doku');
+  const [second] = await Promise.all([page.waitForEvent('popup'), viewLink.click()]);
+  await second.close();
+  // In the editor the address stays plain text.
+  await page.click('#view-edit');
+  await expect(page.locator('#story-description a')).toHaveCount(0);
+  await expect(page.locator('#story-description')).toHaveText('Siehe https://example.com/doku.');
+});
+
+test('Links: ein Zug, der auf einem Link beginnt, verschiebt die Karte', async ({ page }) => {
+  await openBoard(page, boardState([{ id: 'a', title: 'Ziehen', description: 'https://example.com', columnId: 'backlog' }]));
+  const source = await page.locator('.ticket-description a').boundingBox();
+  const target = await page.locator('[data-task-list=done]').boundingBox();
+  await page.mouse.move(source.x + 20, source.y + 5);
+  await page.mouse.down();
+  await page.mouse.move(source.x + 60, source.y + 10, { steps: 5 });
+  await page.mouse.move(target.x + target.width / 2, target.y + 40, { steps: 10 });
+  await page.mouse.up();
+  expect((await stored(page)).projects[0].tasks[0].columnId).toBe('done');
+  await expect(page.locator('dialog[open]')).toHaveCount(0);
+});
+
 // --- Filter "Fällig" -----------------------------------------------------------
 
 test('Fällig-Filter: zeigt überfällige, heute und morgen fällige Einträge, Zahl wird rot bei Überfälligem', async ({ page }) => {
