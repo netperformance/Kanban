@@ -17,7 +17,7 @@ The interface is available in English and German (German name: *Arbeitsboard*).
 - **Due dates:** entries due today or tomorrow are highlighted, overdue entries are marked in red. Entries in a done column are no longer highlighted.
 - **Entry types:** task (default), story, bug and idea. Each type has its own icon and label, while priorities use colour, so type and priority are never confused.
 - **Drag and drop** to move entries between and within columns, plus buttons to move them one column left or right.
-- **Read view:** a click on an entry's title shows the whole entry, with a button to edit it. The rest of the card stays free for dragging, so a drag never opens anything. Long descriptions fade out on the card.
+- **Read view:** a click anywhere on an entry shows the whole entry, with a button to edit it. Buttons and links on the card keep their own function, and a drag never opens anything. With the keyboard, press <kbd>Enter</kbd> on the title. Long descriptions fade out on the card.
 - **Sorting:** show the entries of all columns in your own order (drag and drop), by due date or by priority. Sorting only changes the view; your own order is kept. Each project remembers its choice.
 - **Touch screens:** on tablets and phones, press and hold an entry for a moment, then drag it with your finger. The page scrolls along at the top and bottom edge. A short swipe still scrolls as usual.
 - **Quick add:** every column has a **+** button that creates an entry directly in that column.

@@ -532,6 +532,8 @@ test('Tickets lassen sich per Drag and Drop verschieben', async ({ page }) => {
   await page.mouse.move(target.x + target.width / 2, target.y + 40, { steps: 10 });
   await page.mouse.up();
   expect((await stored(page)).projects[0].tasks[0].columnId).toBe('done');
+  // A drag is no click on the card.
+  await expect(page.locator('dialog[open]')).toHaveCount(0);
 });
 
 // --- Fälligkeitsdatum, Suche, Anlegen in einer Spalte, Farbschema -------------
@@ -813,15 +815,27 @@ test('Ansehen: Klick auf den Titel zeigt den ganzen Eintrag, von dort geht es zu
   await expect(page.locator('#view-dialog')).toHaveJSProperty('open', false);
 });
 
-test('Ansehen: Klick auf die übrige Karte und ein abgebrochener Zug am Titel öffnen nichts', async ({ page }) => {
+test('Ansehen: Klick auf die ganze Karte öffnet den Eintrag, Fußleiste und abgebrochener Zug nicht', async ({ page }) => {
   await openBoard(page, boardState([{ id: 'a', title: 'Ziehen', description: 'Text', columnId: 'backlog' }]));
-  await page.click('.ticket-description');
-  await page.click('.ticket-meta');
-  const title = await page.locator('.ticket-title').boundingBox();
-  await page.mouse.move(title.x + 5, title.y + 5);
-  await page.mouse.down();
-  await page.mouse.move(title.x + 25, title.y + 5);
-  await page.mouse.up();
+  for (const area of ['.ticket-description', '.ticket-meta', '.ticket-title']) {
+    await page.click(area);
+    await expect(page.locator('#view-dialog'), area).toHaveJSProperty('open', true);
+    await expect(page.locator('#view-title')).toHaveText('Ziehen');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#view-dialog')).toHaveJSProperty('open', false);
+  }
+  // Empty space in the footer between the buttons opens nothing.
+  const footer = await page.locator('.ticket-actions').boundingBox();
+  const arrows = await page.locator('.ticket-actions .move-actions').first().boundingBox();
+  await page.mouse.click(arrows.x + arrows.width + 10, footer.y + footer.height / 2);
+  // A drag that starts on the title or on the description and ends in the same column opens nothing.
+  for (const area of ['.ticket-title', '.ticket-description']) {
+    const box = await page.locator(area).boundingBox();
+    await page.mouse.move(box.x + 5, box.y + 5);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 25, box.y + 5);
+    await page.mouse.up();
+  }
   await expect(page.locator('dialog[open]')).toHaveCount(0);
 });
 

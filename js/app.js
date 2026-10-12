@@ -573,16 +573,16 @@
     }
     metaEnd.append(badge);
     meta.append(createTypeLabel(type), metaEnd);
-    // Only the title opens the entry. The rest of the card stays free for dragging.
-    // The title is the heading itself, not a button inside it: a button inside a
-    // draggable card does not receive clicks reliably in every browser.
+    // A click on the card opens the entry (see openTaskFromCard). The title is
+    // also reachable with the keyboard. It is the heading itself, not a button
+    // inside it: a button inside a draggable card does not receive clicks
+    // reliably in every browser.
     const heading = document.createElement('h3');
     heading.className = 'ticket-title';
     heading.dataset.action = 'view-task';
     heading.dataset.id = task.id;
     heading.tabIndex = 0;
     heading.setAttribute('role', 'button');
-    heading.title = t('openEntry');
     heading.textContent = task.title;
     main.append(meta, heading);
     if (task.description) {
@@ -767,8 +767,17 @@
   // Browsers send no click after a real drag. As an extra safety, a click right
   // after the end of a drag is ignored as well.
   let lastDragEnd = 0;
-  function isDeliberateTitleClick() {
+  function isDeliberateClick() {
     return Date.now() - lastDragEnd > 300;
+  }
+
+  // A click anywhere on a card opens the read view. Buttons, links and the
+  // footer with the buttons keep their own meaning. A drag is no click.
+  function openTaskFromCard(event) {
+    const ticket = event.target.closest('.ticket');
+    if (!ticket || event.target.closest('a, button, .ticket-actions') || !isDeliberateClick()) return;
+    const task = getProject().tasks.find((item) => item.id === ticket.dataset.taskId);
+    if (task) openViewDialog(task);
   }
 
   function openTaskFromTitle(title) {
@@ -1453,7 +1462,10 @@
 
   board.addEventListener('click', (event) => {
     const button = event.target.closest('[data-action]');
-    if (!button) return;
+    if (!button) {
+      openTaskFromCard(event);
+      return;
+    }
     const project = getProject();
     const { action, id } = button.dataset;
     if (action === 'move-column-left') moveColumn(id, -1);
@@ -1470,7 +1482,7 @@
       const task = project.tasks.find((item) => item.id === id);
       if (task) openStoryDialog(task);
     }
-    if (action === 'view-task' && isDeliberateTitleClick()) openTaskFromTitle(button);
+    if (action === 'view-task' && isDeliberateClick()) openTaskFromTitle(button);
     if (action === 'delete-task') deleteTask(id);
     if (action === 'add-task') openStoryDialog(null, id);
   });

@@ -256,7 +256,9 @@ h1 { min-width: 0; margin-bottom: 0; overflow-wrap: anywhere; font-family: Georg
 .ticket.is-drop-before { position: relative; }
 .ticket.is-drop-before::before { position: absolute; z-index: 1; top: -8px; right: 0; left: 0; height: 4px; content: ''; border-radius: 3px; background: var(--focus); }
 .ticket.is-critical { border: 2px solid var(--danger); box-shadow: 0 2px 0 var(--danger-shadow); }
-.ticket[draggable="true"] { cursor: grab; }
+.ticket[draggable="true"] { cursor: pointer; }
+.ticket:not(.is-critical):hover { border-color: var(--line-strong); }
+.ticket-actions { cursor: default; }
 .ticket.is-dragging { opacity: 0.42; cursor: grabbing; }
 .ticket-main { display: flex; min-height: 0; flex: 1; flex-direction: column; padding: 15px 15px 10px; }
 .ticket-meta { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 6px 8px; margin-bottom: 9px; }
@@ -270,7 +272,6 @@ h1 { min-width: 0; margin-bottom: 0; overflow-wrap: anywhere; font-family: Georg
 .ticket-description { min-height: 0; flex: 1; margin-bottom: 0; overflow: hidden; overflow-wrap: anywhere; color: var(--description); font-size: 0.86rem; line-height: 1.45; white-space: pre-wrap; }
 .ticket-description.is-truncated { -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent); mask-image: linear-gradient(to bottom, #000 60%, transparent); }
 .ticket h3.ticket-title { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; cursor: pointer; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.ticket-title:hover { text-decoration: underline; text-underline-offset: 3px; }
 .ticket-title:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 3px; }
 .view-meta { margin-bottom: 12px; }
 .view-title { margin-bottom: 6px; overflow-wrap: anywhere; }
