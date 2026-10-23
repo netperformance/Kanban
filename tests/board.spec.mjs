@@ -385,6 +385,45 @@ test('Neuer Eintrag: geöffnetes Projekt ist vorausgewählt und wird verwendet',
   expect(data.projects[0].tasks).toEqual([]);
 });
 
+test('Neuer Eintrag: Tab springt vom Titel direkt in die Beschreibung', async ({ page }) => {
+  await openBoard(page);
+  await page.click('#create-story');
+  await page.fill('#story-title', 'Mit Tab');
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#story-description')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.locator('#story-title')).toBeFocused();
+});
+
+test('Strg+Enter öffnet einen neuen Eintrag, bei offenem Dialog passiert nichts', async ({ page }) => {
+  await openBoard(page);
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect(page.locator('#story-dialog')).toHaveJSProperty('open', true);
+  await expect(page.locator('#story-title')).toBeFocused();
+  await page.fill('#story-title', 'Nicht speichern');
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await page.click('#story-description');
+  await page.keyboard.type('Text');
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect(page.locator('#story-dialog')).toHaveJSProperty('open', true);
+  await expect(page.locator('#story-title')).toHaveValue('Nicht speichern');
+  await expect(page.locator('#story-description')).toHaveText('Text');
+  await expect(page.locator('.ticket')).toHaveCount(0);
+  expect((await stored(page))?.projects[0].tasks ?? []).toEqual([]);
+  await page.keyboard.press('Escape');
+  await openSettings(page);
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect(page.locator('#story-dialog')).toHaveJSProperty('open', false);
+});
+
+test('Knopf "Neuer Eintrag" zeigt das Tastenkürzel beim Darüberfahren, in beiden Sprachen', async ({ page }) => {
+  await openBoard(page, boardState([]));
+  const mac = await page.evaluate(() => /Mac|iPhone|iPad/.test(navigator.userAgentData?.platform || navigator.platform || ''));
+  await expect(page.locator('#create-story')).toHaveAttribute('title', `Neuer Eintrag (${mac ? 'Cmd' : 'Strg'}+Enter)`);
+  await openBoard(page, boardState([], { language: 'en' }));
+  await expect(page.locator('#create-story')).toHaveAttribute('title', `New entry (${mac ? 'Cmd' : 'Ctrl'}+Enter)`);
+});
+
 test('Escape schließt jeden Dialog, auch mit Eingaben', async ({ page }) => {
   await openBoard(page);
   for (const [opener, field] of [['#create-story', '#story-title'], ['#create-column', '#column-title'], ['#create-project', '#project-title'], ['#open-settings', null]]) {

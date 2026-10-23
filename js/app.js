@@ -6,13 +6,14 @@
   const { sanitizeDescription, linkify } = ns.sanitize;
   const model = ns.model;
   // Keep in step with "version" in package.json.
-  const APP_VERSION = '1.0.1';
+  const APP_VERSION = '1.0.2';
   const STORAGE_KEY = 'personal-kanban-board.v1';
   const MAX_IMPORT_MEGABYTES = 5;
   const INFO_NOTICE_MILLISECONDS = 6000;
   const store = ns.storage.createStore(STORAGE_KEY);
 
   const $ = (selector) => document.querySelector(selector);
+  const IS_MAC = /Mac|iPhone|iPad/.test(navigator.userAgentData?.platform || navigator.platform || '');
   const board = $('.board');
   const projectTabs = $('#project-tabs');
   const projectActions = $('#project-actions');
@@ -417,6 +418,8 @@
     });
     document.querySelectorAll('[data-language]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.language === state.language)));
     settingsVersion.textContent = t('versionLabel', { version: APP_VERSION });
+    // Mouseover hint with the shortcut; a Mac uses Cmd instead of Ctrl.
+    $('#create-story').title = t('newEntryTitle', { keys: `${IS_MAC ? 'Cmd' : t('ctrlKey')}+Enter` });
     applyBoardName();
   }
 
@@ -1427,6 +1430,15 @@
     event.preventDefault();
     searchInput.focus();
     searchInput.select();
+  });
+
+  // Ctrl+Enter (Cmd+Enter on a Mac) opens a new entry. While any dialog is
+  // open it does nothing, so it never saves or submits a form by accident.
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' || !(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
+    event.preventDefault();
+    if (event.repeat || document.querySelector('dialog[open]')) return;
+    openStoryDialog();
   });
 
   storyProjectInput.addEventListener('change', () => fillColumnSelect(storyProjectInput.value, storyColumnInput.value));

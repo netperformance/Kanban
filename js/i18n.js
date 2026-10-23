@@ -4,7 +4,7 @@
 
   const TRANSLATIONS = {
     de: {
-      documentTitle: 'Arbeitsboard', appName: 'Arbeitsboard', newProject: 'Neues Projekt', createProject: 'Projekt erstellen', editProject: 'Projekt bearbeiten', deleteProject: 'Projekt löschen', projectsLabel: 'Projekte', generalProject: 'Allgemein', newColumn: 'Neue Spalte', newEntry: '+ Neuer Eintrag', boardLabel: 'Kanban-Board',
+      documentTitle: 'Arbeitsboard', appName: 'Arbeitsboard', newProject: 'Neues Projekt', createProject: 'Projekt erstellen', editProject: 'Projekt bearbeiten', deleteProject: 'Projekt löschen', projectsLabel: 'Projekte', generalProject: 'Allgemein', newColumn: 'Neue Spalte', newEntry: '+ Neuer Eintrag', newEntryTitle: 'Neuer Eintrag ({keys})', ctrlKey: 'Strg', boardLabel: 'Kanban-Board',
       settings: 'Einstellungen', close: 'Schließen', boardNameSection: 'Name des Boards', boardNameHint: 'Erscheint oben auf der Seite und als Titel des Browser-Tabs, in jeder Sprache. Leer lassen für den Standardnamen.', versionLabel: 'Version {version}', languageSection: 'Sprache', dataSection: 'Datensicherung',
       dataHint: 'Dein Board ist nur in diesem Browser gespeichert. Exportiere es regelmäßig als Sicherung oder um es in einen anderen Browser zu übernehmen.',
       exportBoard: 'Exportieren', importBoard: 'Importieren', exportHint: 'Lädt das gesamte Board als JSON-Datei herunter.', importHint: 'Ersetzt das aktuelle Board durch den Inhalt einer JSON-Datei. Der aktuelle Stand wird vorher im Browser gesichert.', exportDone: 'Export gestartet: „{file}“.',
@@ -44,7 +44,7 @@
       priority: { low: 'Niedrig', normal: 'Normal', high: 'Hoch', critical: 'Kritisch' }
     },
     en: {
-      documentTitle: 'Work board', appName: 'Work board', newProject: 'New project', createProject: 'Create project', editProject: 'Edit project', deleteProject: 'Delete project', projectsLabel: 'Projects', generalProject: 'General', newColumn: 'New column', newEntry: '+ New entry', boardLabel: 'Kanban board',
+      documentTitle: 'Work board', appName: 'Work board', newProject: 'New project', createProject: 'Create project', editProject: 'Edit project', deleteProject: 'Delete project', projectsLabel: 'Projects', generalProject: 'General', newColumn: 'New column', newEntry: '+ New entry', newEntryTitle: 'New entry ({keys})', ctrlKey: 'Ctrl', boardLabel: 'Kanban board',
       settings: 'Settings', close: 'Close', boardNameSection: 'Board name', boardNameHint: 'Shown at the top of the page and as the browser tab title, in every language. Leave it empty to use the default name.', versionLabel: 'Version {version}', languageSection: 'Language', dataSection: 'Backup',
       dataHint: 'Your board is stored only in this browser. Export it regularly as a backup or to move it to another browser.',
       exportBoard: 'Export', importBoard: 'Import', exportHint: 'Downloads the whole board as a JSON file.', importHint: 'Replaces the current board with the content of a JSON file. The current state is backed up in the browser first.', exportDone: 'Export started: "{file}".',

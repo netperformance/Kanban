@@ -28,7 +28,7 @@ The interface is available in English and German (German name: *Arbeitsboard*).
 ### Description editor
 
 - Bold, italic, bulleted lists and two text colours.
-- Keyboard shortcuts: <kbd>Ctrl</kbd>+<kbd>B</kbd> for bold, <kbd>Ctrl</kbd>+<kbd>I</kbd> for italic and <kbd>Ctrl</kbd>+<kbd>Z</kbd> to undo the last formatting step. On a Mac, use <kbd>Cmd</kbd> instead of <kbd>Ctrl</kbd>.
+- Keyboard shortcuts: <kbd>Ctrl</kbd>+<kbd>B</kbd> for bold, <kbd>Ctrl</kbd>+<kbd>I</kbd> for italic and <kbd>Ctrl</kbd>+<kbd>Z</kbd> to undo the last formatting step. On a Mac, use <kbd>Cmd</kbd> instead of <kbd>Ctrl</kbd>. <kbd>Ctrl</kbd>+<kbd>Enter</kbd> opens a new entry (it does nothing while a dialog is open). <kbd>Tab</kbd> in the title field jumps straight into the description; the formatting buttons are left out of the tab order.
 - Pasted or dropped content is inserted as plain text, so no foreign formatting or code ends up in an entry.
 - Web addresses that start with `http://`, `https://` or `www.` become clickable links on the card and in the read view. They open in a new tab.
 - Built on the standard Selection and Range APIs, without the deprecated `document.execCommand()`.

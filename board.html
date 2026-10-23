@@ -22,7 +22,7 @@
         <div class="topbar-actions">
           <button class="secondary-button" id="create-project" type="button" data-i18n="newProject">New project</button>
           <button class="secondary-button" id="create-column" type="button" data-i18n="newColumn">New column</button>
-          <button class="primary-button" id="create-story" type="button" data-i18n="newEntry">+ New entry</button>
+          <button class="primary-button" id="create-story" type="button" data-i18n="newEntry" aria-keyshortcuts="Control+Enter Meta+Enter">+ New entry</button>
         </div>
       </div>
     </header>
@@ -137,12 +137,13 @@
       </div>
       <div class="field">
         <label for="story-description" data-i18n="descriptionLabel">Description</label>
+        <!-- Buttons are skipped by Tab, so Tab goes from the title straight into the description. -->
         <div class="editor-toolbar" id="editor-toolbar" role="toolbar" data-i18n-aria-label="formatText" aria-label="Format text">
-          <button class="editor-command" type="button" data-command="bold" data-i18n-aria-label="bold" data-i18n-title="bold" aria-label="Bold" title="Bold"><strong>B</strong></button>
-          <button class="editor-command" type="button" data-command="italic" data-i18n-aria-label="italic" data-i18n-title="italic" aria-label="Italic" title="Italic"><em>I</em></button>
-          <button class="editor-command" type="button" data-command="list" data-i18n="list" data-i18n-aria-label="list" data-i18n-title="list" aria-label="List" title="List">List</button>
-          <button class="editor-command editor-color" type="button" data-command="color" data-value="#20251f" data-i18n-aria-label="blackText" data-i18n-title="blackText" aria-label="Black text color" title="Black text color"><span class="editor-swatch swatch-black" aria-hidden="true"></span></button>
-          <button class="editor-command editor-color" type="button" data-command="color" data-value="#b7352a" data-i18n-aria-label="redText" data-i18n-title="redText" aria-label="Red text color" title="Red text color"><span class="editor-swatch swatch-red" aria-hidden="true"></span></button>
+          <button class="editor-command" type="button" tabindex="-1" data-command="bold" data-i18n-aria-label="bold" data-i18n-title="bold" aria-label="Bold" title="Bold"><strong>B</strong></button>
+          <button class="editor-command" type="button" tabindex="-1" data-command="italic" data-i18n-aria-label="italic" data-i18n-title="italic" aria-label="Italic" title="Italic"><em>I</em></button>
+          <button class="editor-command" type="button" tabindex="-1" data-command="list" data-i18n="list" data-i18n-aria-label="list" data-i18n-title="list" aria-label="List" title="List">List</button>
+          <button class="editor-command editor-color" type="button" tabindex="-1" data-command="color" data-value="#20251f" data-i18n-aria-label="blackText" data-i18n-title="blackText" aria-label="Black text color" title="Black text color"><span class="editor-swatch swatch-black" aria-hidden="true"></span></button>
+          <button class="editor-command editor-color" type="button" tabindex="-1" data-command="color" data-value="#b7352a" data-i18n-aria-label="redText" data-i18n-title="redText" aria-label="Red text color" title="Red text color"><span class="editor-swatch swatch-red" aria-hidden="true"></span></button>
         </div>
         <div id="story-description" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-i18n-aria-label="descriptionLabel" data-i18n-placeholder="descriptionPlaceholder" aria-label="Description" data-placeholder="Enter a description"></div>
       </div>
