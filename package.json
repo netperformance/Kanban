@@ -1,6 +1,6 @@
 {
   "name": "arbeitsboard",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "Personal Kanban board that runs entirely in the browser. No server, no account, data stays in localStorage.",
   "author": "Aaron Kreis (https://aaron.de)",

@@ -6,7 +6,7 @@
   const { sanitizeDescription, linkify } = ns.sanitize;
   const model = ns.model;
   // Keep in step with "version" in package.json.
-  const APP_VERSION = '1.0.2';
+  const APP_VERSION = '1.0.3';
   const STORAGE_KEY = 'personal-kanban-board.v1';
   const MAX_IMPORT_MEGABYTES = 5;
   const INFO_NOTICE_MILLISECONDS = 6000;
