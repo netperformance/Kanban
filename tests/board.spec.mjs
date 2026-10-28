@@ -1006,6 +1006,162 @@ test('Sortieren: nach Fälligkeit und Priorität, eigene Reihenfolge bleibt gesp
   await expect(titles()).toHaveText(['T1', 'T2', 'T3', 'T4']);
 });
 
+// --- Zeiterfassung ------------------------------------------------------------
+
+test('Zeiterfassung: standardmäßig aus, in den Einstellungen ein- und ausschaltbar, bleibt nach dem Neuladen', async ({ page }) => {
+  await openBoard(page, boardState([{ id: 'a', title: 'Mit Zeit', columnId: 'backlog' }]));
+  await expect(page.locator('.ticket-timer')).toHaveCount(0);
+  await openSettings(page);
+  await expect(page.locator('[data-time-tracking="off"]')).toHaveAttribute('aria-pressed', 'true');
+  await page.click('[data-time-tracking="on"]');
+  await expect(page.locator('[data-time-tracking="on"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.ticket-timer .timer-value')).toHaveText('0:00:00');
+  await expect(page.locator('.timer-reset')).toBeDisabled();
+  expect((await stored(page)).timeTracking).toBe(true);
+  await page.reload();
+  await expect(page.locator('.ticket-timer')).toHaveCount(1);
+  await openSettings(page);
+  await page.click('[data-time-tracking="off"]');
+  await expect(page.locator('.ticket-timer')).toHaveCount(0);
+  expect((await stored(page)).timeTracking).toBe(false);
+});
+
+test('Zeiterfassung: starten, anhalten, weiterzählen nach dem Neuladen, Klick auf die Zeitleiste öffnet nichts', async ({ page }) => {
+  const start = Date.now() - 65000;
+  await openBoard(page, boardState([
+    { id: 'a', title: 'Läuft', columnId: 'backlog', timeSpent: 120000, timerStart: start },
+    { id: 'b', title: 'Steht', columnId: 'backlog', timeSpent: 0, timerStart: null }
+  ], { timeTracking: true }));
+  const first = page.locator('.ticket').nth(0);
+  // The running timer continued while the page was closed: 2 minutes plus 65 seconds.
+  await expect(first).toHaveClass(/is-timing/);
+  await expect(first.locator('.timer-value')).toHaveText(/^0:03:0\d$/);
+  await expect(first.locator('.timer-toggle')).toHaveAttribute('aria-label', 'Timer anhalten');
+  // The display counts on.
+  const before = await first.locator('.timer-value').textContent();
+  await expect(first.locator('.timer-value')).not.toHaveText(before, { timeout: 3000 });
+  await first.locator('.timer-display').click();
+  await expect(page.locator('dialog[open]')).toHaveCount(0);
+  await first.locator('.timer-toggle').click();
+  await expect(first).not.toHaveClass(/is-timing/);
+  await expect(first.locator('.timer-toggle')).toHaveAttribute('aria-label', 'Timer starten');
+  await expect(first.locator('.timer-toggle')).toBeFocused();
+  const data = (await stored(page)).projects[0].tasks[0];
+  expect(data.timerStart).toBe(null);
+  expect(data.timeSpent).toBeGreaterThanOrEqual(185000);
+  // Paused: the time stands still.
+  const paused = await first.locator('.timer-value').textContent();
+  await page.waitForTimeout(1200);
+  await expect(first.locator('.timer-value')).toHaveText(paused);
+});
+
+test('Zeiterfassung: es läuft immer nur ein Timer, auch über Projekte hinweg', async ({ page }) => {
+  const data = boardState([{ id: 'a', title: 'Erster', columnId: 'backlog' }], { timeTracking: true });
+  data.projects.push({ id: 'p2', title: 'Website', columns: [{ id: 'backlog', title: 'Backlog', done: false }], tasks: [{ id: 'x', title: 'Anderes Projekt', columnId: 'backlog', timeSpent: 0, timerStart: Date.now() - 5000 }] });
+  await openBoard(page, data);
+  await page.locator('.ticket .timer-toggle').click();
+  await expect(page.locator('.ticket')).toHaveClass(/is-timing/);
+  const saved = await stored(page);
+  expect(saved.projects[0].tasks[0].timerStart).toEqual(expect.any(Number));
+  expect(saved.projects[1].tasks[0].timerStart).toBe(null);
+  expect(saved.projects[1].tasks[0].timeSpent).toBeGreaterThanOrEqual(5000);
+});
+
+test('Zeiterfassung: Zurücksetzen nach Rückfrage, Ausschalten hält laufende Timer an', async ({ page }) => {
+  await openBoard(page, boardState([
+    { id: 'a', title: 'Zurück', columnId: 'backlog', timeSpent: 2530000, timerStart: null },
+    { id: 'b', title: 'Läuft', columnId: 'backlog', timeSpent: 0, timerStart: Date.now() - 10000 }
+  ], { timeTracking: true }));
+  const messages = [];
+  page.on('dialog', (dialog) => messages.push(dialog.message()));
+  await page.locator('.ticket').nth(0).locator('.timer-reset').click();
+  await expect(page.locator('.ticket').nth(0).locator('.timer-value')).toHaveText('0:00:00');
+  expect(messages).toEqual(['Erfasste Zeit (0:42:10) von "Zurück" wirklich auf 0 zurücksetzen?']);
+  await expect(page.locator('.ticket').nth(0).locator('.timer-reset')).toBeDisabled();
+  await openSettings(page);
+  await page.click('[data-time-tracking="off"]');
+  const task = (await stored(page)).projects[0].tasks[1];
+  expect(task.timerStart).toBe(null);
+  expect(task.timeSpent).toBeGreaterThanOrEqual(10000);
+});
+
+test('Zeiterfassung: in der Leseansicht starten, anhalten und zurücksetzen', async ({ page }) => {
+  await openBoard(page, { ...boardState([{ id: 'a', title: 'Ansicht', columnId: 'backlog', timeSpent: 60000, timerStart: null }], { timeTracking: true }), language: 'en' });
+  await page.click('.ticket-title');
+  await expect(page.locator('#view-timer')).toBeVisible();
+  await expect(page.locator('#view-timer-value')).toHaveText('0:01:00');
+  await expect(page.locator('#view-timer-toggle')).toHaveText('Start');
+  await page.click('#view-timer-toggle');
+  await expect(page.locator('#view-timer')).toHaveClass(/is-running/);
+  await expect(page.locator('#view-timer-toggle')).toHaveText('Pause');
+  await expect(page.locator('.ticket')).toHaveClass(/is-timing/);
+  await page.click('#view-timer-toggle');
+  await expect(page.locator('#view-timer')).not.toHaveClass(/is-running/);
+  await page.click('#view-timer-reset');
+  await expect(page.locator('#view-timer-value')).toHaveText('0:00:00');
+  await expect(page.locator('#view-timer-reset')).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await openSettings(page);
+  await page.click('[data-time-tracking="off"]');
+  await page.click('#close-settings');
+  await page.click('.ticket-title');
+  await expect(page.locator('#view-timer')).toBeHidden();
+});
+
+test('Zeiterfassung: in einer Erledigt-Spalte hält der Timer an und behält die Zeit, auf jedem Weg dorthin', async ({ page }) => {
+  const running = (id, seconds) => ({ id, title: `Eintrag ${id}`, columnId: 'backlog', timeSpent: 60000, timerStart: Date.now() - seconds * 1000 });
+  const task = async (id) => (await stored(page)).projects[0].tasks.find((item) => item.id === id);
+  const expectPaused = async (id, atLeast) => {
+    const data = await task(id);
+    expect(data.columnId, id).toBe('done');
+    expect(data.timerStart, id).toBe(null);
+    expect(data.timeSpent, id).toBeGreaterThanOrEqual(atLeast);
+  };
+
+  // With the arrow button.
+  await openBoard(page, boardState([running('a', 30)], { timeTracking: true }));
+  await page.click('[data-action=move-task-right][data-id=a]');
+  await expectPaused('a', 90000);
+  await expect(page.locator('.ticket[data-task-id=a]')).not.toHaveClass(/is-timing/);
+
+  // By drag and drop.
+  await openBoard(page, boardState([running('b', 10)], { timeTracking: true }));
+  const source = await page.locator('.ticket[data-task-id=b] h3').boundingBox();
+  const target = await page.locator('[data-task-list=done]').boundingBox();
+  await page.mouse.move(source.x + 20, source.y + 5);
+  await page.mouse.down();
+  await page.mouse.move(source.x + 60, source.y + 10, { steps: 5 });
+  await page.mouse.move(target.x + target.width / 2, target.y + 40, { steps: 10 });
+  await page.mouse.up();
+  await expectPaused('b', 70000);
+
+  // With the column selection in the edit dialog.
+  await openBoard(page, boardState([running('c', 10)], { timeTracking: true }));
+  await page.click('[data-action=edit-task][data-id=c]');
+  await page.selectOption('#story-column', 'done');
+  await page.click('#story-form button[type=submit]');
+  await expectPaused('c', 70000);
+
+  // Started again by hand in the done column, the timer keeps running and moves on from the kept time.
+  await page.click('[data-action=toggle-timer][data-id=c]');
+  const restarted = await task('c');
+  expect(restarted.timerStart).toEqual(expect.any(Number));
+  expect(restarted.timeSpent).toBeGreaterThanOrEqual(70000);
+  await page.click('[data-action=edit-task][data-id=c]');
+  await page.fill('#story-title', 'Umbenannt');
+  await page.click('#story-form button[type=submit]');
+  expect((await task('c')).timerStart).toEqual(expect.any(Number));
+
+  // A column that is marked as done stops the timers in it; another column does not.
+  await openBoard(page, boardState([running('d', 10)], { timeTracking: true }));
+  await page.click('[data-action=edit-column][data-id=backlog]');
+  await page.check('#column-done');
+  await page.click('#column-form button[type=submit]');
+  const marked = await task('d');
+  expect(marked.timerStart).toBe(null);
+  expect(marked.timeSpent).toBeGreaterThanOrEqual(70000);
+});
+
 // --- Ziehen mit dem Finger ------------------------------------------------------
 
 async function touch(page) {

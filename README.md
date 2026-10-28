@@ -20,6 +20,7 @@ The interface is available in English and German (German name: *Arbeitsboard*).
 - **Read view:** a click anywhere on an entry shows the whole entry, with a button to edit it. Buttons and links on the card keep their own function, and a drag never opens anything. With the keyboard, press <kbd>Enter</kbd> on the title. Long descriptions fade out on the card.
 - **Sorting:** show the entries of all columns in your own order (drag and drop), by due date or by priority. Sorting only changes the view; your own order is kept. Each project remembers its choice.
 - **Touch screens:** on tablets and phones, press and hold an entry for a moment, then drag it with your finger. The page scrolls along at the top and bottom edge. A short swipe still scrolls as usual.
+- **Time tracking (optional):** switch time tracking on under *Settings*, and every entry gets a timer that you can start, pause and reset. While a timer runs, its entry has a green frame and the time counts up every second. Only one timer runs at a time: starting a timer pauses the one that was running, even in another project. Moving an entry to a column whose entries count as done also pauses its timer, and so does marking its column as done. In a done column you can start the timer again by hand. A running timer keeps counting while the page is closed, because the board stores the moment the timer was started. Before a timer goes back to zero, the board asks. The read view shows the time in large figures, with the same buttons. If you switch time tracking off, the timers disappear from the entries and stop counting. The recorded times are not deleted and appear again when you switch time tracking on.
 - **Quick add:** every column has a **+** button that creates an entry directly in that column.
 - **Move entries between projects and columns** from the edit dialog.
 - **Search** in titles and descriptions. Several words narrow the result; press <kbd>/</kbd> to jump to the search field, and clear it with the **✕** in the field or <kbd>Esc</kbd>.
@@ -46,6 +47,7 @@ The interface is available in English and German (German name: *Arbeitsboard*).
 - Board name: your own name for the board, shown at the top and in the browser tab in every language. Leave it empty to use the default name.
 - Language: English (default) or German.
 - Appearance: light (default), dark, or following the operating system.
+- Time tracking: off (default) or on.
 - Export and import of the board.
 - The version number of the app.
 

@@ -273,7 +273,50 @@
 
   test('Modell: unbekannte Felder werden nicht übernommen', () => {
     const result = model.normalizeState(board([{ id: 'a', title: 'T', columnId: 'backlog', extra: 'x', __proto__: { y: 1 } }]));
-    equal(Object.keys(result.state.projects[0].tasks[0]).sort(), ['columnId', 'description', 'due', 'id', 'priority', 'title', 'type']);
+    equal(Object.keys(result.state.projects[0].tasks[0]).sort(), ['columnId', 'description', 'due', 'id', 'priority', 'timeSpent', 'timerStart', 'title', 'type']);
+  });
+
+  test('Modell: Zeiterfassung ist standardmäßig aus, nur true schaltet sie ein', () => {
+    equal(model.defaultState().timeTracking, false);
+    equal(model.normalizeState(board([])).state.timeTracking, false);
+    equal(model.normalizeState({ ...board([]), timeTracking: true }).state.timeTracking, true);
+    equal(model.normalizeState({ ...board([]), timeTracking: 'yes' }).state.timeTracking, false);
+  });
+
+  test('Modell: Einträge ohne erfasste Zeit beginnen bei null, ohne als Fehler zu gelten', () => {
+    const result = model.normalizeState(board([{ id: 'a', title: 'T', columnId: 'backlog' }]));
+    equal(result.state.projects[0].tasks[0].timeSpent, 0);
+    equal(result.state.projects[0].tasks[0].timerStart, null);
+    equal(result.report, { repaired: 0, skipped: 0 });
+  });
+
+  test('Modell: erfasste Zeit und Startzeitpunkt werden geprüft, ungültige Werte zurückgesetzt und gemeldet', () => {
+    const result = model.normalizeState(board([
+      { id: 'a', title: 'Gültig', columnId: 'backlog', timeSpent: 90000, timerStart: 1790000000000 },
+      { id: 'b', title: 'Negativ', columnId: 'backlog', timeSpent: -5, timerStart: 0 },
+      { id: 'c', title: 'Text', columnId: 'backlog', timeSpent: '100', timerStart: 'gestern' },
+      { id: 'd', title: 'Bruch', columnId: 'backlog', timeSpent: 1.5, timerStart: null }
+    ]));
+    const tasks = result.state.projects[0].tasks;
+    equal(tasks.map((task) => task.timeSpent), [90000, 0, 0, 0]);
+    equal(tasks.map((task) => task.timerStart), [1790000000000, null, null, null]);
+    equal(result.report, { repaired: 5, skipped: 0 });
+  });
+
+  test('Modell: erfasste Zeit zählt den laufenden Timer mit, eine Startzeit in der Zukunft zählt nicht', () => {
+    equal(model.trackedTime({ timeSpent: 60000, timerStart: null }, 1000000), 60000);
+    equal(model.trackedTime({ timeSpent: 60000, timerStart: 940000 }, 1000000), 120000);
+    equal(model.trackedTime({ timeSpent: 60000, timerStart: 2000000 }, 1000000), 60000);
+    equal(model.trackedTime({}, 1000000), 0);
+  });
+
+  test('Modell: Zeit wird als Stunden, Minuten und Sekunden angezeigt', () => {
+    equal(model.formatDuration(0), '0:00:00');
+    equal(model.formatDuration(999), '0:00:00');
+    equal(model.formatDuration(2530000), '0:42:10');
+    equal(model.formatDuration(4063000), '1:07:43');
+    equal(model.formatDuration(125 * 3600000 + 5000), '125:00:05');
+    equal(model.formatDuration(-5000), '0:00:00');
   });
 
   test('Modell: doppelte Spaltennamen werden eindeutig gemacht statt alles zu verwerfen', () => {

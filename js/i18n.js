@@ -40,6 +40,11 @@
       searchLabel: 'Einträge durchsuchen', clearSearch: 'Suche leeren', searchPlaceholder: 'Suchen …',
       appearanceSection: 'Darstellung', themeSystem: 'Wie System', themeLight: 'Hell', themeDark: 'Dunkel', filterLabel: 'Nach Typ filtern', filterPriorityLabel: 'Nach Priorität filtern', filterDue: 'Fällig', sortLabel: 'Sortierung', sortManual: 'Eigene Reihenfolge', sortDue: 'Nach Fälligkeit', sortPriority: 'Nach Priorität', filterDueHint: 'Nur überfällige sowie heute und morgen fällige Einträge', filterAll: 'Alle', filterStatus: '{shown} von {total} Einträgen angezeigt', filterStatusOne: '{shown} von 1 Eintrag angezeigt', filterStatusZero: 'Noch keine Einträge',
       emptyFiltered: 'Keine passenden Einträge. {count} sind durch den Filter ausgeblendet.', emptyFilteredOne: 'Keine passenden Einträge. Ein Eintrag ist durch den Filter ausgeblendet.',
+      timeTrackingSection: 'Zeiterfassung', timeTrackingOff: 'Aus', timeTrackingOn: 'An',
+      timeTrackingHint: 'Zeigt auf jedem Eintrag einen Timer, den du starten, anhalten und zurücksetzen kannst. Es läuft immer nur ein Timer: Startest du einen Timer, hält der bisher laufende an. Verschiebst du einen Eintrag in eine Spalte, deren Einträge als erledigt gelten, hält sein Timer ebenfalls an. Schaltest du die Zeiterfassung aus, verschwinden die Timer von den Einträgen und zählen nicht weiter. Die erfassten Zeiten werden dabei nicht gelöscht und erscheinen wieder, sobald du die Zeiterfassung einschaltest.',
+      timeSpent: 'Erfasste Zeit', timerStart: 'Starten', timerPause: 'Anhalten', timerReset: 'Zurücksetzen',
+      startTimer: 'Timer starten', pauseTimer: 'Timer anhalten', resetTimer: 'Timer zurücksetzen',
+      resetTimerConfirm: 'Erfasste Zeit ({time}) von "{title}" wirklich auf 0 zurücksetzen?',
       type: { task: 'Aufgabe', story: 'Story', bug: 'Fehler', idea: 'Idee' },
       priority: { low: 'Niedrig', normal: 'Normal', high: 'Hoch', critical: 'Kritisch' }
     },
@@ -80,6 +85,11 @@
       searchLabel: 'Search entries', clearSearch: 'Clear search', searchPlaceholder: 'Search…',
       appearanceSection: 'Appearance', themeSystem: 'System', themeLight: 'Light', themeDark: 'Dark', filterLabel: 'Filter by type', filterPriorityLabel: 'Filter by priority', filterDue: 'Due', sortLabel: 'Sort order', sortManual: 'Own order', sortDue: 'By due date', sortPriority: 'By priority', filterDueHint: 'Only entries that are overdue or due today or tomorrow', filterAll: 'All', filterStatus: '{shown} of {total} entries shown', filterStatusOne: '{shown} of 1 entry shown', filterStatusZero: 'No entries yet',
       emptyFiltered: 'No matching entries. {count} are hidden by the filter.', emptyFilteredOne: 'No matching entries. One entry is hidden by the filter.',
+      timeTrackingSection: 'Time tracking', timeTrackingOff: 'Off', timeTrackingOn: 'On',
+      timeTrackingHint: 'Adds a timer to every entry that you can start, pause and reset. Only one timer runs at a time: starting a timer pauses the one that was running. Moving an entry to a column whose entries count as done also pauses its timer. If you switch time tracking off, the timers disappear from the entries and stop counting. The recorded times are not deleted and appear again when you switch time tracking on.',
+      timeSpent: 'Tracked time', timerStart: 'Start', timerPause: 'Pause', timerReset: 'Reset',
+      startTimer: 'Start timer', pauseTimer: 'Pause timer', resetTimer: 'Reset timer',
+      resetTimerConfirm: 'Reset the tracked time ({time}) of "{title}" to 0?',
       type: { task: 'Task', story: 'Story', bug: 'Bug', idea: 'Idea' },
       priority: { low: 'Low', normal: 'Normal', high: 'High', critical: 'Critical' }
     }

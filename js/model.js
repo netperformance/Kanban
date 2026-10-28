@@ -4,7 +4,7 @@
 
   const { sanitizeDescription } = ns.sanitize;
 
-  const SCHEMA_VERSION = 8;
+  const SCHEMA_VERSION = 9;
   const GENERAL_PROJECT_ID = 'general';
   const LIMITS = Object.freeze({ boardName: 60, taskTitle: 120, columnTitle: 48, projectTitle: 48, description: 10000, id: 200, search: 100 });
   // Colour scheme: light (default), dark, or following the operating system.
@@ -42,6 +42,33 @@
     const [year, month, day] = value.split('-').map(Number);
     const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     return Math.round((new Date(year, month - 1, day) - start) / 86400000);
+  }
+
+  // Time tracking: timeSpent is the time of all finished runs in milliseconds,
+  // timerStart the moment (milliseconds since 1970) the running timer was
+  // started, or null. The time is always computed from these two values, so a
+  // timer keeps counting while the page is closed or the computer sleeps.
+  function isDuration(value) {
+    return Number.isSafeInteger(value) && value >= 0;
+  }
+
+  function isTimestamp(value) {
+    return Number.isSafeInteger(value) && value > 0;
+  }
+
+  // Tracked time of an entry up to now. A start time in the future (clock set
+  // back) counts as zero instead of a negative time.
+  function trackedTime(task, now = Date.now()) {
+    const spent = isDuration(task.timeSpent) ? task.timeSpent : 0;
+    const running = isTimestamp(task.timerStart) ? Math.max(0, now - task.timerStart) : 0;
+    return Math.min(Number.MAX_SAFE_INTEGER, spent + running);
+  }
+
+  // Hours, minutes and seconds, for example "0:42:10" or "12:05:00".
+  function formatDuration(milliseconds) {
+    const total = Math.floor(Math.max(0, milliseconds) / 1000);
+    const pad = (value) => String(value).padStart(2, '0');
+    return `${Math.floor(total / 3600)}:${pad(Math.floor(total / 60) % 60)}:${pad(total % 60)}`;
   }
 
   function colorForIndex(index) {
@@ -106,6 +133,7 @@
       language: 'en',
       theme: DEFAULT_THEME,
       boardName: '',
+      timeTracking: false,
       activeProjectId: GENERAL_PROJECT_ID,
       projects: [{ id: GENERAL_PROJECT_ID, title: 'General', ...defaultBoard() }]
     };
@@ -206,7 +234,20 @@
       } else if (raw.due !== undefined && raw.due !== '') {
         report.repaired += 1;
       }
-      tasks.push({ id, type, title, description, priority, due, columnId });
+      // Entries from before version 9 have no tracked time and start at zero.
+      let timeSpent = 0;
+      if (isDuration(raw.timeSpent)) {
+        timeSpent = raw.timeSpent;
+      } else if (raw.timeSpent !== undefined) {
+        report.repaired += 1;
+      }
+      let timerStart = null;
+      if (isTimestamp(raw.timerStart)) {
+        timerStart = raw.timerStart;
+      } else if (raw.timerStart !== undefined && raw.timerStart !== null) {
+        report.repaired += 1;
+      }
+      tasks.push({ id, type, title, description, priority, due, columnId, timeSpent, timerStart });
     });
     if (rawTasks !== undefined && !Array.isArray(rawTasks)) report.repaired += 1;
     return { columns, tasks };
@@ -270,6 +311,8 @@
         theme,
         // Own name of the board; empty means the default name of the language.
         boardName: normalizeBoardName(candidate.boardName),
+        // Timer on the entries; off unless switched on in the settings.
+        timeTracking: candidate.timeTracking === true,
         activeProjectId: projectIds.has(candidate.activeProjectId) ? candidate.activeProjectId : GENERAL_PROJECT_ID,
         projects
       },
@@ -283,6 +326,6 @@
 
   ns.model = Object.freeze({
     SCHEMA_VERSION, GENERAL_PROJECT_ID, LIMITS, PRIORITY_KEYS, PRIORITY_FILTER_ORDER, SORT_KEYS, TYPE_KEYS, DEFAULT_TYPE, THEMES, DEFAULT_THEME, COLUMN_COLORS, DEFAULT_COLUMNS,
-    isPriority, isType, isDate, daysUntil, colorForIndex, isColor, normalizeColor, nextColumnColor, createId, defaultBoard, defaultState, normalizeBoardName, normalizeFilter, normalizeState, problemCount
+    isPriority, isType, isDate, daysUntil, isDuration, isTimestamp, trackedTime, formatDuration, colorForIndex, isColor, normalizeColor, nextColumnColor, createId, defaultBoard, defaultState, normalizeBoardName, normalizeFilter, normalizeState, problemCount
   });
 })(window.Arbeitsboard = window.Arbeitsboard || {});

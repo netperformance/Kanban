@@ -92,6 +92,15 @@
         </div>
       </section>
 
+      <section class="settings-section" aria-labelledby="settings-time-title">
+        <h3 class="settings-title" id="settings-time-title" data-i18n="timeTrackingSection">Time tracking</h3>
+        <div class="segmented" role="group" aria-labelledby="settings-time-title">
+          <button type="button" data-time-tracking="off" aria-pressed="true" data-i18n="timeTrackingOff">Off</button>
+          <button type="button" data-time-tracking="on" aria-pressed="false" data-i18n="timeTrackingOn">On</button>
+        </div>
+        <p class="settings-hint settings-hint-below" data-i18n="timeTrackingHint">Adds a timer to every entry that you can start, pause and reset. Only one timer runs at a time: starting a timer pauses the one that was running. Moving an entry to a column whose entries count as done also pauses its timer. If you switch time tracking off, the timers disappear from the entries and stop counting. The recorded times are not deleted and appear again when you switch time tracking on.</p>
+      </section>
+
       <section class="settings-section" aria-labelledby="settings-data-title">
         <h3 class="settings-title" id="settings-data-title" data-i18n="dataSection">Backup</h3>
         <p class="settings-hint" data-i18n="dataHint">Your board is stored only in this browser. Export it regularly as a backup or to move it to another browser.</p>
@@ -119,6 +128,16 @@
       <div class="ticket-meta view-meta" id="view-meta"></div>
       <h2 class="dialog-heading view-title" id="view-title"></h2>
       <p class="view-location" id="view-location"></p>
+      <div class="view-timer" id="view-timer" hidden>
+        <div class="view-timer-time">
+          <span class="view-timer-label" data-i18n="timeSpent">Tracked time</span>
+          <span class="view-timer-value" id="view-timer-value">0:00:00</span>
+        </div>
+        <div class="view-timer-actions">
+          <button class="primary-button view-timer-button" id="view-timer-toggle" type="button"></button>
+          <button class="secondary-button view-timer-button" id="view-timer-reset" type="button"></button>
+        </div>
+      </div>
       <div class="view-description" id="view-description"></div>
       <footer class="dialog-actions">
         <button class="secondary-button" id="view-edit" type="button" data-i18n="edit">Edit</button>

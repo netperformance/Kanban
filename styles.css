@@ -42,6 +42,8 @@
   --danger-soft: #fff1ef;
   --danger-border: #d6a39b;
   --ok: #2f6b4a;
+  --ok-soft: #e8f2ec;
+  --ok-ring: rgba(47, 107, 74, 0.2);
   --warn: #805813;
   --warn-line: #c58b12;
   --text-red: #b7352a;
@@ -88,6 +90,8 @@
   --danger-soft: #3a1f1b;
   --danger-border: #7a3a32;
   --ok: #7fc79b;
+  --ok-soft: #1f3327;
+  --ok-ring: rgba(127, 199, 155, 0.25);
   --warn: #e3bf63;
   --warn-line: #c58b12;
   --text-red: #f08a7e;
@@ -135,6 +139,8 @@
     --danger-soft: #3a1f1b;
     --danger-border: #7a3a32;
     --ok: #7fc79b;
+    --ok-soft: #1f3327;
+    --ok-ring: rgba(127, 199, 155, 0.25);
     --warn: #e3bf63;
     --warn-line: #c58b12;
     --text-red: #f08a7e;
@@ -273,6 +279,32 @@ h1 { min-width: 0; margin-bottom: 0; overflow-wrap: anywhere; font-family: Georg
 .ticket-description.is-truncated { -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent); mask-image: linear-gradient(to bottom, #000 60%, transparent); }
 .ticket h3.ticket-title { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; cursor: pointer; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .ticket-title:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 3px; }
+/* Time tracking ------------------------------------------------------------ */
+/* With time tracking on, every entry gets a timer row and is higher, so the description keeps its space. */
+.board.has-timers .ticket { height: 232px; }
+.ticket-timer { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 9px 7px 15px; border-top: 1px solid var(--divider); cursor: default; }
+.timer-display { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--muted); font-size: 0.86rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.timer-icon { width: 16px; height: 16px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.timer-icon-play, .timer-icon-pause { width: 14px; height: 14px; fill: currentColor; stroke: none; }
+.timer-icon-reset { width: 15px; height: 15px; stroke-width: 2.2; }
+.timer-actions { display: flex; flex: 0 0 auto; gap: 4px; }
+.timer-dot { width: 8px; height: 8px; margin: 0 4px; flex: 0 0 auto; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px var(--ok-ring); }
+.timer-toggle.is-running { color: var(--ok); border-color: var(--ok); }
+.ticket.is-timing:not(.is-critical) { border-color: var(--ok); box-shadow: 0 0 0 1px var(--ok), 0 2px 0 var(--card-shadow); }
+.ticket.is-timing .ticket-timer { background: var(--ok-soft); }
+.ticket.is-timing .timer-display { color: var(--ok); }
+.view-timer { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin: 0 0 16px; padding: 10px 12px 10px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); }
+.view-timer[hidden] { display: none; }
+.view-timer.is-running { border-color: var(--ok); background: var(--ok-soft); }
+.view-timer-time { display: flex; flex-direction: column; }
+.view-timer-label { color: var(--muted); font-size: 0.76rem; font-weight: 700; }
+.view-timer-value { font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.view-timer.is-running .view-timer-value { color: var(--ok); }
+.view-timer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.view-timer-button { display: inline-flex; align-items: center; gap: 7px; }
+.view-timer-button:disabled { cursor: not-allowed; opacity: 0.45; }
+.settings-hint-below { margin-top: 10px; }
+
 .view-meta { margin-bottom: 12px; }
 .view-title { margin-bottom: 6px; overflow-wrap: anywhere; }
 .view-location { margin: 0 0 16px; color: var(--muted); font-size: 0.86rem; }

@@ -32,6 +32,10 @@
   const boardNameInput = $('#board-name-input');
   const settingsVersion = $('#settings-version');
   const viewDialog = $('#view-dialog');
+  const viewTimer = $('#view-timer');
+  const viewTimerValue = $('#view-timer-value');
+  const viewTimerToggle = $('#view-timer-toggle');
+  const viewTimerReset = $('#view-timer-reset');
   const storyDialog = $('#story-dialog');
   const storyForm = $('#story-form');
   const storyIdInput = $('#task-id');
@@ -189,6 +193,29 @@
     return before !== content(state);
   }
 
+  // Ids of all entries that are in a done column.
+  function doneTaskIds(source) {
+    const ids = new Set();
+    source.projects.forEach((project) => {
+      const doneColumns = new Set(project.columns.filter((column) => column.done).map((column) => column.id));
+      project.tasks.forEach((task) => {
+        if (doneColumns.has(task.columnId)) ids.add(task.id);
+      });
+    });
+    return ids;
+  }
+
+  // An entry that has just become done stops its timer. The tracked time is
+  // kept. This covers every way to get there: dragging, the arrow buttons,
+  // the edit dialog, deleting a column and marking a column as done. A timer
+  // started again by hand in a done column keeps running.
+  function pauseTimersOnDone(draft, doneBefore, now) {
+    const doneAfter = doneTaskIds(draft);
+    draft.projects.forEach((project) => project.tasks.forEach((task) => {
+      if (doneAfter.has(task.id) && !doneBefore.has(task.id)) pauseTimerOf(task, now);
+    }));
+  }
+
   // Every change to the board goes through commit(). The change is made on a
   // copy. Only if the copy was saved does it replace the current state, so a
   // failed save never leaves the screen and the storage out of step.
@@ -196,7 +223,9 @@
   // without it the message appears as a notice.
   function commit(mutate, errorTarget = null) {
     const draft = structuredClone(state);
+    const doneBefore = doneTaskIds(state);
     mutate(draft);
+    pauseTimersOnDone(draft, doneBefore, Date.now());
     draft.revision = state.revision + 1;
     const result = store.save(draft, state.revision);
     if (result.ok) {
@@ -430,7 +459,11 @@
     task: ['M7.5 3.5h9a4 4 0 0 1 4 4v9a4 4 0 0 1-4 4h-9a4 4 0 0 1-4-4v-9a4 4 0 0 1 4-4z', 'M8 12.5l3 3 5-6'],
     story: ['M6.5 3.5h11v17l-5.5-3.8-5.5 3.8z'],
     bug: ['M12 7c2.8 0 5 2.9 5 6.5S14.8 20 12 20s-5-2.9-5-6.5S9.2 7 12 7z', 'M12 7v13M7 11H3.5M7 16H3.5M17 11h3.5M17 16h3.5M9.5 6L7.5 4M14.5 6l2-2'],
-    idea: ['M9.5 18h5M10.5 21h3', 'M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.1v.1h5v-.1c0-.8.4-1.6 1.1-2.1A6 6 0 0 0 12 3z']
+    idea: ['M9.5 18h5M10.5 21h3', 'M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.1v.1h5v-.1c0-.8.4-1.6 1.1-2.1A6 6 0 0 0 12 3z'],
+    clock: ['M12 5a8 8 0 1 1 0 16a8 8 0 1 1 0-16z', 'M12 9v4l2.5 2.5M9.5 2.5h5'],
+    play: ['M7.5 5v14l11.5-7z'],
+    pause: ['M7 5h3v14H7zM14 5h3v14h-3z'],
+    reset: ['M4 12a8 8 0 1 0 2.4-5.7', 'M4 4v4.5h4.5']
   });
   const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 
@@ -544,12 +577,144 @@
     return button;
   }
 
+  // ---------------------------------------------------------------------------
+  // Time tracking
+
+  function isRunning(task) {
+    return model.isTimestamp(task.timerStart);
+  }
+
+  function findTaskInAll(source, taskId) {
+    for (const project of source.projects) {
+      const task = project.tasks.find((item) => item.id === taskId);
+      if (task) return task;
+    }
+    return null;
+  }
+
+  // Ends a run: its time is added to the tracked time.
+  function pauseTimerOf(task, now) {
+    if (!isRunning(task)) return;
+    task.timeSpent = model.trackedTime(task, now);
+    task.timerStart = null;
+  }
+
+  function pauseAllTimers(source, now) {
+    source.projects.forEach((project) => project.tasks.forEach((task) => pauseTimerOf(task, now)));
+  }
+
+  // Starts or pauses the timer of an entry. Only one timer runs at a time:
+  // starting one pauses every other running timer, in every project.
+  function toggleTimer(taskId) {
+    const task = findTaskInAll(state, taskId);
+    if (!task) return;
+    const start = !isRunning(task);
+    const now = Date.now();
+    commit((draft) => {
+      pauseAllTimers(draft, now);
+      if (start) findTaskInAll(draft, taskId).timerStart = now;
+    });
+  }
+
+  // Sets the tracked time back to zero and stops the timer, after a question.
+  function resetTimer(taskId) {
+    const task = findTaskInAll(state, taskId);
+    if (!task || (model.trackedTime(task) === 0 && !isRunning(task))) return;
+    if (!confirm(t('resetTimerConfirm', { title: task.title, time: model.formatDuration(model.trackedTime(task)) }))) return;
+    commit((draft) => {
+      const target = findTaskInAll(draft, taskId);
+      if (!target) return;
+      target.timeSpent = 0;
+      target.timerStart = null;
+    });
+  }
+
+  function setTimeTracking(enabled) {
+    if (enabled === state.timeTracking) return;
+    const now = Date.now();
+    setView((draft) => {
+      draft.timeTracking = enabled;
+      // Hidden timers must not keep counting.
+      if (!enabled) pauseAllTimers(draft, now);
+    });
+    render();
+  }
+
+  function createTimerIcon(name) {
+    const icon = createIcon(name);
+    icon.setAttribute('class', `timer-icon timer-icon-${name}`);
+    return icon;
+  }
+
+  // Timer row of an entry: time on the left, start or pause and reset on the right.
+  function createTimerRow(task) {
+    const running = isRunning(task);
+    const time = model.trackedTime(task);
+    const row = document.createElement('div');
+    row.className = 'ticket-timer';
+    const display = document.createElement('span');
+    display.className = 'timer-display';
+    display.title = t('timeSpent');
+    let marker;
+    if (running) {
+      marker = document.createElement('span');
+      marker.className = 'timer-dot';
+      marker.setAttribute('aria-hidden', 'true');
+    } else {
+      marker = createTimerIcon('clock');
+    }
+    const value = document.createElement('span');
+    value.className = 'timer-value';
+    value.dataset.timerFor = task.id;
+    value.textContent = model.formatDuration(time);
+    display.append(marker, value);
+    const actions = document.createElement('div');
+    actions.className = 'timer-actions';
+    const toggleButton = createButton(running ? t('pauseTimer') : t('startTimer'), '', 'toggle-timer', task.id, `icon-button timer-toggle${running ? ' is-running' : ''}`);
+    toggleButton.append(createTimerIcon(running ? 'pause' : 'play'));
+    const resetButton = createButton(t('resetTimer'), '', 'reset-timer', task.id, 'icon-button timer-reset', time === 0 && !running);
+    resetButton.append(createTimerIcon('reset'));
+    actions.append(toggleButton, resetButton);
+    row.append(display, actions);
+    return row;
+  }
+
+  // Timer in the read view of an entry.
+  function renderViewTimer() {
+    if (!viewDialog.open) return;
+    const task = getProject().tasks.find((item) => item.id === viewDialog.dataset.taskId);
+    viewTimer.hidden = !state.timeTracking || !task;
+    if (viewTimer.hidden) return;
+    const running = isRunning(task);
+    const time = model.trackedTime(task);
+    viewTimer.classList.toggle('is-running', running);
+    viewTimerValue.dataset.timerFor = task.id;
+    viewTimerValue.textContent = model.formatDuration(time);
+    viewTimerToggle.replaceChildren(createTimerIcon(running ? 'pause' : 'play'), document.createTextNode(running ? t('timerPause') : t('timerStart')));
+    viewTimerToggle.setAttribute('aria-label', running ? t('pauseTimer') : t('startTimer'));
+    viewTimerReset.replaceChildren(createTimerIcon('reset'), document.createTextNode(t('timerReset')));
+    viewTimerReset.setAttribute('aria-label', t('resetTimer'));
+    viewTimerReset.disabled = time === 0 && !running;
+  }
+
+  // Running timers count on the screen every second. Only the shown time
+  // changes; nothing is stored, the time follows from the start moment.
+  function updateRunningTimers() {
+    if (!state.timeTracking) return;
+    const now = Date.now();
+    document.querySelectorAll('[data-timer-for]').forEach((element) => {
+      const task = findTaskInAll(state, element.dataset.timerFor);
+      if (task && isRunning(task)) element.textContent = model.formatDuration(model.trackedTime(task, now));
+    });
+  }
+
   function createTicket(project, task) {
     const priority = model.isPriority(task.priority) ? task.priority : 'normal';
     const type = model.isType(task.type) ? task.type : model.DEFAULT_TYPE;
     const due = dueInfo(project, task);
     const ticket = document.createElement('article');
-    ticket.className = `ticket ${priority === 'critical' ? 'is-critical' : ''}`.trim();
+    const timing = state.timeTracking && isRunning(task);
+    ticket.className = `ticket${priority === 'critical' ? ' is-critical' : ''}${timing ? ' is-timing' : ''}`;
     ticket.draggable = true;
     ticket.dataset.taskId = task.id;
     ticket.dataset.type = type;
@@ -613,7 +778,9 @@
       createButton(t('deleteTaskConfirm', { title: task.title }), t('delete'), 'delete-task', task.id, 'ticket-text-button delete-button')
     );
     footer.append(moveActions, editActions);
-    ticket.append(main, footer);
+    ticket.append(main);
+    if (state.timeTracking) ticket.append(createTimerRow(task));
+    ticket.append(footer);
     return ticket;
   }
 
@@ -699,10 +866,13 @@
       return tab;
     }));
     board.setAttribute('aria-labelledby', `project-tab-${state.projects.indexOf(project)}`);
+    board.classList.toggle('has-timers', state.timeTracking);
+    document.querySelectorAll('[data-time-tracking]').forEach((button) => button.setAttribute('aria-pressed', String((button.dataset.timeTracking === 'on') === state.timeTracking)));
     projectActions.hidden = project.id === model.GENERAL_PROJECT_ID;
     renderFilterBar(project);
     board.replaceChildren(...project.columns.map((column, index) => createColumn(project, column, index)));
     compactEntryHeaders();
+    renderViewTimer();
   }
 
   // An entry header holds type, due date and priority. If they do not fit into
@@ -765,6 +935,7 @@
     }
     viewDialog.dataset.taskId = task.id;
     showDialog(viewDialog, $('#view-close'));
+    renderViewTimer();
   }
 
   // Browsers send no click after a real drag. As an extra safety, a click right
@@ -778,7 +949,7 @@
   // footer with the buttons keep their own meaning. A drag is no click.
   function openTaskFromCard(event) {
     const ticket = event.target.closest('.ticket');
-    if (!ticket || event.target.closest('a, button, .ticket-actions') || !isDeliberateClick()) return;
+    if (!ticket || event.target.closest('a, button, .ticket-actions, .ticket-timer') || !isDeliberateClick()) return;
     const task = getProject().tasks.find((item) => item.id === ticket.dataset.taskId);
     if (task) openViewDialog(task);
   }
@@ -1311,6 +1482,9 @@
 
   $('#create-story').addEventListener('click', () => openStoryDialog());
   $('#view-close').addEventListener('click', () => closeDialog(viewDialog));
+  viewTimerToggle.addEventListener('click', () => toggleTimer(viewDialog.dataset.taskId));
+  viewTimerReset.addEventListener('click', () => resetTimer(viewDialog.dataset.taskId));
+  document.querySelectorAll('[data-time-tracking]').forEach((button) => button.addEventListener('click', () => setTimeTracking(button.dataset.timeTracking === 'on')));
   $('#view-edit').addEventListener('click', () => {
     const task = getProject().tasks.find((item) => item.id === viewDialog.dataset.taskId);
     closeDialog(viewDialog);
@@ -1497,6 +1671,13 @@
     if (action === 'view-task' && isDeliberateClick()) openTaskFromTitle(button);
     if (action === 'delete-task') deleteTask(id);
     if (action === 'add-task') openStoryDialog(null, id);
+    if (action === 'toggle-timer' || action === 'reset-timer') {
+      if (action === 'toggle-timer') toggleTimer(id);
+      if (action === 'reset-timer') resetTimer(id);
+      // The board was drawn again; the keyboard focus goes back to the timer of the entry.
+      const again = [...board.querySelectorAll('[data-action="toggle-timer"]')].find((item) => item.dataset.id === id);
+      if (again) again.focus();
+    }
   });
 
   // Drag and drop of tickets within the board.
@@ -1685,6 +1866,8 @@
   store.onExternalChange(() => {
     if (reloadFromStorage()) showNotice({ key: 'sync', type: 'info', message: t('syncedFromOtherTab') });
   });
+
+  setInterval(updateRunningTimers, 1000);
 
   applyLanguage();
   applyTheme();
